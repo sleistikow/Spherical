@@ -2,6 +2,7 @@ package de.trac.spherical;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.opengl.GLSurfaceView;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -15,6 +16,8 @@ import java.io.InputStream;
 import de.trac.spherical.parser.PhotoSphereMetadata;
 import de.trac.spherical.parser.SphereParser;
 
+import de.trac.spherical.rendering.Renderer;
+
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "Spherical";
@@ -23,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
     public static final String MIME_IMAGE = "image/*";
 
     private TextView text;
+    private GLSurfaceView surfaceView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,6 +34,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         //TODO: Remove later
         text = (TextView) findViewById(R.id.hello_world);
+        surfaceView = (GLSurfaceView) findViewById(R.id.surface_view);
+        surfaceView.setEGLContextClientVersion(2);
+        surfaceView.setRenderer(new Renderer());
 
         Intent intent = getIntent();
         switch (intent.getAction()) {
