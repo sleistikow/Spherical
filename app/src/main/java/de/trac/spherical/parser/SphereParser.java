@@ -1,24 +1,18 @@
 package de.trac.spherical.parser;
 
-import android.util.Log;
-
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PushbackInputStream;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
- * Created by vanitas on 12.09.17.
+ * ParserUtil that does stuff.
  */
-
-@SuppressWarnings("ResultOfMethodCallIgnored")
 public class SphereParser {
 
     public static final String TAG = "SphereParser";
