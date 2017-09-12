@@ -92,10 +92,12 @@ public class MainActivity extends AppCompatActivity {
             String xml = SphereParser.getXMLContent(inputStream);
             PhotoSphereMetadata metadata = SphereParser.parse(xml);
 
+            inputStream = getContentResolver().openInputStream(uri);
+
             if (metadata.isUsePanoramaViewer()) {
-                displayPhotoSphere(uri);
+                displayPhotoSphere(inputStream, metadata);
             } else {
-                displayFlatImage(uri);
+                displayFlatImage(inputStream);
             }
 
         } catch (FileNotFoundException e) {
@@ -132,9 +134,9 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Display a flat image.
-     * @param uri
+     * @param inputStream
      */
-    private void displayFlatImage(Uri uri) {
+    private void displayFlatImage(InputStream inputStream) {
 
     }
 }
