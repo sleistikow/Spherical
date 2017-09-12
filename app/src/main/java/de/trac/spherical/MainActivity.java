@@ -12,6 +12,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 
+import de.trac.spherical.parser.PhotoSphereMetadata;
 import de.trac.spherical.parser.SphereParser;
 
 public class MainActivity extends AppCompatActivity {
@@ -82,14 +83,14 @@ public class MainActivity extends AppCompatActivity {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
             String xml = SphereParser.getXMLContent(inputStream);
+            PhotoSphereMetadata metadata = SphereParser.parse(xml);
 
-            boolean sphere = true; //TODO: parser.
-
-            if (sphere) {
+            if (metadata.isUsePanoramaViewer()) {
                 displayPhotoSphere(uri);
             } else {
                 displayFlatImage(uri);
             }
+
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -105,12 +106,9 @@ public class MainActivity extends AppCompatActivity {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
             String xml = SphereParser.getXMLContent(inputStream);
+            PhotoSphereMetadata metadata = SphereParser.parse(xml);
 
-            if (xml != null) {
-                text.setText(xml);
-            } else {
-                text.setText("null");
-            }
+            displayPhotoSphere(getContentResolver().openInputStream(uri), metadata);
 
         } catch (FileNotFoundException e) {
             Log.e(TAG, "File not found.", e);
@@ -119,6 +117,10 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "IOException: ", e);
             Toast.makeText(this, R.string.ioerror, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void displayPhotoSphere(InputStream inputStream, PhotoSphereMetadata metadata) {
+        //Please fill me!
     }
 
     /**
