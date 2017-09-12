@@ -37,11 +37,10 @@ public class Renderer implements GLSurfaceView.Renderer {
      * Out: sets fragment color
      */
     private static final String DEFAULT_FRAGMENT_SHADER =
-                    "precision mediump float;\n" +
                     "varying vec2 uv;\n" +
                     "uniform sampler2D tex;\n" +
                     "void main() {\n" +
-                    "  gl_FragColor = vec4(0);//texture2D(tex, uv);\n" +
+                    "  gl_FragColor = texture2D(tex, uv);\n" +
                     "}\n";
 
     // Store a sphere geometry as framework for the photo texture.
@@ -90,8 +89,8 @@ public class Renderer implements GLSurfaceView.Renderer {
         glUniformMatrix4fv(mvpLocation, 1, false, mvpMatrix, 0);
         glDrawElements(GL_TRIANGLES, sphere.getIndexBuffer().capacity(), GL_UNSIGNED_SHORT, sphere.getIndexBuffer());
 
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
+        glDisableVertexAttribArray(textureCoordinatesLocation);
+        glDisableVertexAttribArray(positionLocation);
 
         glUseProgram(0);
     }
@@ -130,7 +129,7 @@ public class Renderer implements GLSurfaceView.Renderer {
     public void initialize() {
 
         // Initialize sphere.
-        sphere = new Sphere(1.0f, 32, 32); // TODO: choose useful aparameters.
+        sphere = new Sphere(1.0f, 32, 32); // TODO: choose useful parameters.
 
         // Set OpenGL state.
         glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
