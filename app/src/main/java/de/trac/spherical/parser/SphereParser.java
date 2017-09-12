@@ -108,7 +108,7 @@ public class SphereParser {
         }
     }
 
-    public static void append(ArrayList<Byte> list, byte[] array, int r) {
+    private static void append(ArrayList<Byte> list, byte[] array, int r) {
         for (int i = 0; i < r; i++) {
             list.add(array[i]);
         }
