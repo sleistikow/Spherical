@@ -102,7 +102,7 @@ public class SphereParser {
         System.out.println(getXMLContent(new FileInputStream(file)));
     }
 
-    public static void unread(ArrayList<Byte> list, PushbackInputStream pb) throws IOException {
+    private static void unread(ArrayList<Byte> list, PushbackInputStream pb) throws IOException {
         for (int i = list.size() - 1; i >= 0; i--) {
             pb.unread(list.get(i));
         }
@@ -114,11 +114,11 @@ public class SphereParser {
         }
     }
 
-    public static String hex(byte[] b) {
+    private static String hex(byte[] b) {
         return new BigInteger(b).toString(16);
     }
 
-    public static int integer(byte[] b) {
+    private static int integer(byte[] b) {
         return new BigInteger(b).intValue();
     }
 }

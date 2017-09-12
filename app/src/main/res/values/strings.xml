@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Spherical</string>
+    <string name="prompt_share_image">Share an image with the app!</string>
+    <string name="file_not_found">File not found.</string>
+    <string name="ioerror">An Error has occurred: IOError.</string>
+    <string name="wow">WOW! SUCH 3D!!!</string>
 </resources>
