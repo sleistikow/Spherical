@@ -1,6 +1,9 @@
 package de.trac.spherical;
 
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.support.v7.app.AppCompatActivity;
@@ -17,6 +20,7 @@ import de.trac.spherical.parser.PhotoSphereMetadata;
 import de.trac.spherical.parser.SphereParser;
 
 import de.trac.spherical.rendering.Renderer;
+import de.trac.spherical.rendering.SphereSurfaceView;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -25,18 +29,17 @@ public class MainActivity extends AppCompatActivity {
     public static final String MIME_PHOTO_SPHERE = "application/vnd.google.panorama360+jpg";
     public static final String MIME_IMAGE = "image/*";
 
-    private TextView text;
-    private GLSurfaceView surfaceView;
+    private SphereSurfaceView surfaceView;
+    private Renderer renderer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        //TODO: Remove later
-        text = (TextView) findViewById(R.id.hello_world);
-        surfaceView = (GLSurfaceView) findViewById(R.id.surface_view);
-        surfaceView.setEGLContextClientVersion(2);
-        surfaceView.setRenderer(new Renderer());
+
+        // Initialize renderer and setup surface view.
+        surfaceView = new SphereSurfaceView(this);
+        renderer = new Renderer(surfaceView);
+        setContentView(surfaceView);
 
         Intent intent = getIntent();
         switch (intent.getAction()) {
@@ -129,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void displayPhotoSphere(InputStream inputStream, PhotoSphereMetadata metadata) {
-        //Please fill me!
+        renderer.setBitmap(BitmapFactory.decodeStream(inputStream));
     }
 
     /**
@@ -137,6 +140,6 @@ public class MainActivity extends AppCompatActivity {
      * @param inputStream
      */
     private void displayFlatImage(InputStream inputStream) {
-
+        Toast.makeText(this, "Not yet implemented", Toast.LENGTH_SHORT).show();
     }
 }

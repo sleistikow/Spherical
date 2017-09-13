@@ -1,8 +1,9 @@
 package de.trac.spherical.rendering;
 
 
-import android.database.MatrixCursor;
+import android.graphics.Bitmap;
 import android.opengl.GLSurfaceView;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
 
@@ -10,6 +11,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static android.opengl.GLES20.*;
+import static android.opengl.GLUtils.getEGLErrorString;
 
 public class Renderer implements GLSurfaceView.Renderer {
 
@@ -65,6 +67,29 @@ public class Renderer implements GLSurfaceView.Renderer {
     private int positionLocation;
     private int textureCoordinatesLocation;
     private int mvpLocation;
+    private int texLocation;
+
+    // Store texture.
+    private final int textureID [] = new int[1];
+
+    // Store bitmap for lazy loading.
+    private Bitmap bitmap = null;
+
+    // Store input handler instance to determine transformation.
+    private SphereSurfaceView surfaceView;
+
+    /**
+     * Constructor. Will be set as renderer of the specified surface view.
+     * @param surfaceView SurfaceView which will own the renderer
+     */
+    public Renderer(SphereSurfaceView surfaceView) {
+        if(surfaceView == null)
+            throw new NullPointerException("SurfaceView must not be null");
+
+        this.surfaceView = surfaceView;
+        this.surfaceView.setEGLContextClientVersion(2);
+        this.surfaceView.setRenderer(this);
+    }
 
     /**
      * Draws the frame.
@@ -72,8 +97,19 @@ public class Renderer implements GLSurfaceView.Renderer {
      */
     public void onDrawFrame(GL10 unused) {
 
+        // Upload texture, if necessary.
+        if(bitmap != null) {
+            glBindTexture(GL_TEXTURE_2D, textureID[0]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            GLUtils.texImage2D(GL_TEXTURE_2D, 0, bitmap, 0);
+
+            // Release bitmap for garbage collection.
+            bitmap = null;
+        }
+
         // Update transformation matrix.
-        Matrix.multiplyMM(mvpMatrix, 0, viewMatrix, 0, modlMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 0, surfaceView.getRotationMatrix(), 0, modlMatrix, 0);
         Matrix.multiplyMM(mvpMatrix, 0, projMatrix, 0, mvpMatrix, 0);
 
         // Draw the frame.
@@ -87,12 +123,17 @@ public class Renderer implements GLSurfaceView.Renderer {
         glVertexAttribPointer(textureCoordinatesLocation, 2, GL_FLOAT, false, 2*4, sphere.getTextureCoordinatesBuffer());
 
         glUniformMatrix4fv(mvpLocation, 1, false, mvpMatrix, 0);
+        glUniform1i(texLocation, 0);
         glDrawElements(GL_TRIANGLES, sphere.getIndexBuffer().capacity(), GL_UNSIGNED_SHORT, sphere.getIndexBuffer());
 
         glDisableVertexAttribArray(textureCoordinatesLocation);
         glDisableVertexAttribArray(positionLocation);
 
         glUseProgram(0);
+
+        int error = glGetError();
+        if(error != GL_NO_ERROR)
+            Log.e("Renderer", "Error: " + getEGLErrorString(error));
     }
 
     /**
@@ -119,7 +160,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 
         //TODO: (re)move tmp code
         Matrix.setIdentityM(modlMatrix, 0);
-        Matrix.translateM(modlMatrix, 0, 0, 0, 4.0f);
+        //Matrix.translateM(modlMatrix, 0, 0, 0, 4.0f);
         Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
     }
 
@@ -129,16 +170,21 @@ public class Renderer implements GLSurfaceView.Renderer {
     public void initialize() {
 
         // Initialize sphere.
-        sphere = new Sphere(1.0f, 32, 32); // TODO: choose useful parameters.
+        sphere = new Sphere(10.0f, 32, 32); // TODO: choose useful parameters.
 
         // Set OpenGL state.
-        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+        glCullFace(GL_FRONT);
+        glEnable(GL_TEXTURE_2D);
+        glActiveTexture(GL_TEXTURE0);
 
         // Build shader program.
         programID = buildProgram(DEFAULT_VERTEX_SHADER, DEFAULT_FRAGMENT_SHADER);
+
+        // Generate texture.
+        glGenTextures(1, textureID, 0);
     }
 
     /**
@@ -146,7 +192,16 @@ public class Renderer implements GLSurfaceView.Renderer {
      */
     public void deinitialize() {
         sphere = null;
+        glDeleteTextures(1, textureID, 0);
         glDeleteProgram(programID);
+    }
+
+    /**
+     * Uploads the image data of the given bitmap into the internal texture.
+     * @param bitmap Bitmap to be set as texture
+     */
+    public void setBitmap(Bitmap bitmap) {
+        this.bitmap = bitmap;
     }
 
     /**
@@ -193,6 +248,10 @@ public class Renderer implements GLSurfaceView.Renderer {
         mvpLocation = glGetUniformLocation(program, "mvpMatrix");
         if (mvpLocation == -1) {
             throw new RuntimeException("Could not get uniform location for 'mvpMatrix'");
+        }
+        texLocation = glGetUniformLocation(program, "tex");
+        if(texLocation == -1) {
+            throw new RuntimeException("Could not get uniform location for 'tex'");
         }
 
         return program;
