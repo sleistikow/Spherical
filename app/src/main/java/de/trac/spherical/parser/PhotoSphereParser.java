@@ -39,7 +39,7 @@ import static de.trac.spherical.parser.PhotoSphereMetadata.USE_PANORAMA_VIEWER;
 /**
  * ParserUtil that does stuff.
  */
-public class SphereParser {
+public class PhotoSphereParser {
 
     private static final String TAG = "PhoSphePars";
 

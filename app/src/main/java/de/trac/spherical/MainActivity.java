@@ -1,15 +1,11 @@
 package de.trac.spherical;
 
-import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.opengl.GLSurfaceView;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.FileNotFoundException;
@@ -17,7 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import de.trac.spherical.parser.PhotoSphereMetadata;
-import de.trac.spherical.parser.SphereParser;
+import de.trac.spherical.parser.PhotoSphereParser;
 
 import de.trac.spherical.rendering.Renderer;
 import de.trac.spherical.rendering.SphereSurfaceView;
@@ -57,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Distinguish type of sent image. Images with the MIME type of a photosphere will be directly
-     * displayed, while images with MIME type image/* are being manually tested using {@link SphereParser}.
+     * displayed, while images with MIME type image/* are being manually tested using {@link PhotoSphereParser}.
      * @param intent incoming intent.
      */
     private void handleSentImageIntent(Intent intent) {
@@ -92,8 +88,8 @@ public class MainActivity extends AppCompatActivity {
     private void displayMaybePhotoSphere(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
-            String xml = SphereParser.getXMLContent(inputStream);
-            PhotoSphereMetadata metadata = SphereParser.parse(xml);
+            String xml = PhotoSphereParser.getXMLContent(inputStream);
+            PhotoSphereMetadata metadata = PhotoSphereParser.parse(xml);
 
             if (metadata == null || !metadata.isUsePanoramaViewer()) {
                 displayFlatImage(getContentResolver().openInputStream(uri));
@@ -115,8 +111,8 @@ public class MainActivity extends AppCompatActivity {
     private void displayPhotoSphere(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
-            String xml = SphereParser.getXMLContent(inputStream);
-            PhotoSphereMetadata metadata = SphereParser.parse(xml);
+            String xml = PhotoSphereParser.getXMLContent(inputStream);
+            PhotoSphereMetadata metadata = PhotoSphereParser.parse(xml);
 
             if (metadata == null) {
                 Log.e(TAG, "Metadata is null. Fall back to flat image.");
