@@ -14,7 +14,7 @@ import android.view.MotionEvent;
  */
 public class SphereSurfaceView extends GLSurfaceView implements SensorEventListener {
 
-    public static boolean USE_TOUCH = true; // TODO: determine dynamically
+    public static boolean USE_TOUCH = false; // TODO: determine dynamically
 
     private final float TOUCH_SCALE_FACTOR = 180.0f / 1080;
     private float previousX;
@@ -33,7 +33,7 @@ public class SphereSurfaceView extends GLSurfaceView implements SensorEventListe
         Matrix.setIdentityM(rotationMatrix, 0);
 
         SensorManager manager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-        Sensor accelerometer = manager.getSensorList(Sensor.TYPE_ACCELEROMETER).get(0);
+        Sensor accelerometer = manager.getSensorList(Sensor.TYPE_ROTATION_VECTOR).get(0);
         manager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
     }
 
@@ -81,15 +81,7 @@ public class SphereSurfaceView extends GLSurfaceView implements SensorEventListe
         if(USE_TOUCH)
             return;
 
-        SensorManager.getRotationMatrixFromVector(tmpMatrix, event.values);
-        SensorManager.getOrientation(tmpMatrix, tmpVector);
-
-        for (int i = 0; i < tmpVector.length; i++)
-            tmpVector[i] = Math.round(Math.toDegrees(tmpVector[i]));
-
-        synchronized (rotationMatrix) {
-            Matrix.setRotateEulerM(rotationMatrix, 0, -tmpVector[0], -tmpVector[1], -tmpVector[2]);
-        }
+        SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
     }
 
     /**
