@@ -103,6 +103,7 @@ public class Renderer implements GLSurfaceView.Renderer {
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
             GLUtils.texImage2D(GL_TEXTURE_2D, 0, bitmap, 0);
+            glBindTexture(GL_TEXTURE_2D, 0);
 
             // Release bitmap for garbage collection.
             bitmap = null;
@@ -124,16 +125,14 @@ public class Renderer implements GLSurfaceView.Renderer {
 
         glUniformMatrix4fv(mvpLocation, 1, false, mvpMatrix, 0);
         glUniform1i(texLocation, 0);
+        glBindTexture(GL_TEXTURE_2D, textureID[0]);
         glDrawElements(GL_TRIANGLES, sphere.getIndexBuffer().capacity(), GL_UNSIGNED_SHORT, sphere.getIndexBuffer());
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         glDisableVertexAttribArray(textureCoordinatesLocation);
         glDisableVertexAttribArray(positionLocation);
 
         glUseProgram(0);
-
-        int error = glGetError();
-        if(error != GL_NO_ERROR)
-            Log.e("Renderer", "Error: " + getEGLErrorString(error));
     }
 
     /**
@@ -156,28 +155,15 @@ public class Renderer implements GLSurfaceView.Renderer {
      * @param config surface configuration
      */
     public void onSurfaceCreated(GL10 unused, EGLConfig config) {
-        initialize();
-
-        //TODO: (re)move tmp code
-        Matrix.setIdentityM(modlMatrix, 0);
-        //Matrix.translateM(modlMatrix, 0, 0, 0, 4.0f);
-        Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
-    }
-
-    /**
-     * Initialize OpenGL state and data.
-     */
-    public void initialize() {
 
         // Initialize sphere.
         sphere = new Sphere(10.0f, 32, 32); // TODO: choose useful parameters.
 
         // Set OpenGL state.
-        glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_FRONT);
-        glEnable(GL_TEXTURE_2D);
+        glFrontFace(GL_CW);
         glActiveTexture(GL_TEXTURE0);
 
         // Build shader program.
@@ -185,15 +171,10 @@ public class Renderer implements GLSurfaceView.Renderer {
 
         // Generate texture.
         glGenTextures(1, textureID, 0);
-    }
 
-    /**
-     * Reset OpenGL state and delete data.
-     */
-    public void deinitialize() {
-        sphere = null;
-        glDeleteTextures(1, textureID, 0);
-        glDeleteProgram(programID);
+        // Initialize matrices.
+        Matrix.setIdentityM(modlMatrix, 0);
+        Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
     }
 
     /**
