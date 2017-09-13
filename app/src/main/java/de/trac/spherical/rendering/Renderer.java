@@ -173,7 +173,7 @@ public class Renderer implements GLSurfaceView.Renderer {
         glGenTextures(1, textureID, 0);
 
         // Initialize matrices.
-        Matrix.setIdentityM(modlMatrix, 0);
+        Matrix.setRotateM(modlMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
         Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
     }
 

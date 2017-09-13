@@ -23,14 +23,10 @@ public class SphereSurfaceView extends GLSurfaceView implements SensorEventListe
     // The actual rotation matrix determined by user input.
     private final float rotationMatrix [] = new float[16];
 
-    // This matrix is used to compensate sensor coordinate system rotation.
-    private final float offsetMatrix [] = new float[16];
-
     public SphereSurfaceView(Context context) {
         super(context);
 
         Matrix.setIdentityM(rotationMatrix, 0);
-        Matrix.setRotateM(offsetMatrix, 0, 90.0f, 1.0f, 0.0f, 0.0f);
 
         SensorManager manager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         Sensor accelerometer = manager.getSensorList(Sensor.TYPE_ROTATION_VECTOR).get(0);
@@ -83,7 +79,6 @@ public class SphereSurfaceView extends GLSurfaceView implements SensorEventListe
 
         synchronized (rotationMatrix) {
             SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-            Matrix.multiplyMM(rotationMatrix, 0, rotationMatrix, 0, offsetMatrix, 0);
         }
     }
 
