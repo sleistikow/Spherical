@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                     displayPhotoSphere(imageUri);
                     break;
 
-                case MIME_IMAGE:
+                default:
                     displayMaybePhotoSphere(imageUri);
                     break;
             }
@@ -95,12 +95,10 @@ public class MainActivity extends AppCompatActivity {
             String xml = SphereParser.getXMLContent(inputStream);
             PhotoSphereMetadata metadata = SphereParser.parse(xml);
 
-            inputStream = getContentResolver().openInputStream(uri);
-
-            if (metadata.isUsePanoramaViewer()) {
-                displayPhotoSphere(inputStream, metadata);
+            if (metadata == null || !metadata.isUsePanoramaViewer()) {
+                displayFlatImage(getContentResolver().openInputStream(uri));
             } else {
-                displayFlatImage(inputStream);
+                displayPhotoSphere(getContentResolver().openInputStream(uri), metadata);
             }
 
         } catch (FileNotFoundException e) {
@@ -120,6 +118,11 @@ public class MainActivity extends AppCompatActivity {
             String xml = SphereParser.getXMLContent(inputStream);
             PhotoSphereMetadata metadata = SphereParser.parse(xml);
 
+            if (metadata == null) {
+                Log.e(TAG, "Metadata is null. Fall back to flat image.");
+                displayFlatImage(getContentResolver().openInputStream(uri));
+            }
+
             displayPhotoSphere(getContentResolver().openInputStream(uri), metadata);
 
         } catch (FileNotFoundException e) {
@@ -133,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void displayPhotoSphere(InputStream inputStream, PhotoSphereMetadata metadata) {
         renderer.setBitmap(BitmapFactory.decodeStream(inputStream));
+        Log.d(TAG, "Display Photo Sphere!");
     }
 
     /**
@@ -140,6 +144,6 @@ public class MainActivity extends AppCompatActivity {
      * @param inputStream
      */
     private void displayFlatImage(InputStream inputStream) {
-        Toast.makeText(this, "Not yet implemented", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Display Flat Image!");
     }
 }

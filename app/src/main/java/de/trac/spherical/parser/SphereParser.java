@@ -115,12 +115,15 @@ public class SphereParser {
 
         byte[] xml = new byte[xmlLen - 2];
         i = inputStream.read(xml);
-        throwIfUnexpectedEOF(i, r.length);
+        throwIfUnexpectedEOF(i, xml.length);
 
         return new String(xml);
     }
 
     public static PhotoSphereMetadata parse(String xmp) {
+        if (xmp == null) {
+            return null;
+        }
         PhotoSphereMetadata meta = new PhotoSphereMetadata();
         meta.setUsePanoramaViewer(parseBoolean(USE_PANORAMA_VIEWER, xmp, true));
         meta.setCaptureSoftware(parseString(CAPTURE_SOFTWARE, xmp));
