@@ -58,8 +58,10 @@ public class SphereSurfaceView extends GLSurfaceView implements SensorEventListe
                 if (x < getWidth() / 2)
                     dy = dy * -1 ;
 
-                Matrix.rotateM(rotationMatrix, 0, dy * TOUCH_SCALE_FACTOR, 1.0f, 0.0f, 0.0f);
-                Matrix.rotateM(rotationMatrix, 0, dx * TOUCH_SCALE_FACTOR, 0.0f, 1.0f, 0.0f);
+                synchronized (rotationMatrix) {
+                    Matrix.rotateM(rotationMatrix, 0, dy * TOUCH_SCALE_FACTOR, 1.0f, 0.0f, 0.0f);
+                    Matrix.rotateM(rotationMatrix, 0, dx * TOUCH_SCALE_FACTOR, 0.0f, 1.0f, 0.0f);
+                }
         }
 
         previousX = x;
