@@ -6,6 +6,9 @@ import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.Toast;
 
 import java.io.FileNotFoundException;
@@ -36,6 +39,22 @@ public class MainActivity extends AppCompatActivity {
         surfaceView = new SphereSurfaceView(this);
         renderer = new Renderer(surfaceView);
         setContentView(surfaceView);
+
+        // Detect gestures like single taps.
+        final GestureDetector mGesDetect = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent event) {
+                SphereSurfaceView.USE_TOUCH = !SphereSurfaceView.USE_TOUCH;
+                return true;
+            }
+        });
+
+        surfaceView.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return mGesDetect.onTouchEvent(event);
+            }
+        });
 
         Intent intent = getIntent();
         switch (intent.getAction()) {
@@ -142,4 +161,5 @@ public class MainActivity extends AppCompatActivity {
     private void displayFlatImage(InputStream inputStream) {
         Log.d(TAG, "Display Flat Image!");
     }
+
 }
