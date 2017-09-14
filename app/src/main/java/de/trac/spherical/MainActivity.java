@@ -88,6 +88,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        fab.show();
+    }
+
     /**
      * Distinguish type of sent image. Images with the MIME type of a photosphere will be directly
      * displayed, while images with MIME type image/* are being manually tested using {@link PhotoSphereParser}.
