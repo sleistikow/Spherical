@@ -49,29 +49,28 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 SphereSurfaceView.USE_TOUCH = !SphereSurfaceView.USE_TOUCH;
-                fab.hide();
+                fab.setVisibility(View.INVISIBLE);
             }
         });
-        fab.hide();
-
 
         // Detect gestures like single taps.
-        final GestureDetector mGesDetect = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+        final GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent event) {
                 if (fab.isShown()) {
-                    fab.hide();
+                    fab.setVisibility(View.INVISIBLE);
                 } else {
                     fab.show();
                 }
                 return true;
             }
+
         });
 
         surfaceView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                return mGesDetect.onTouchEvent(event);
+                return gestureDetector.onTouchEvent(event);
             }
         });
 

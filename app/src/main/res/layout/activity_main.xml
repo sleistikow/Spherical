@@ -18,7 +18,7 @@
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab"
         android:src="@drawable/ic_explore_white_48px"
-        app:fabSize="auto"
+        app:fabSize="mini"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:layout_width="wrap_content"
