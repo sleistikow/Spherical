@@ -3,11 +3,16 @@ package de.trac.spherical;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Bundle;
+import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.GestureDetector;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -19,7 +24,6 @@ import java.io.InputStream;
 
 import de.trac.spherical.parser.PhotoSphereMetadata;
 import de.trac.spherical.parser.PhotoSphereParser;
-
 import de.trac.spherical.rendering.Renderer;
 import de.trac.spherical.rendering.SphereSurfaceView;
 
@@ -33,35 +37,41 @@ public class MainActivity extends AppCompatActivity {
     private SphereSurfaceView surfaceView;
     private Renderer renderer;
     private FloatingActionButton fab;
+    private Toolbar toolbar;
+    private AppBarLayout appBarLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize renderer and setup surface view.
-        surfaceView = new SphereSurfaceView(this);
-        renderer = new Renderer(surfaceView);
-        ((LinearLayout) findViewById(R.id.container)).addView(surfaceView);
-
+        // Prepare UI
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        appBarLayout = (AppBarLayout) findViewById(R.id.lay_toolbar);
+        AppBarLayout.LayoutParams lp = (AppBarLayout.LayoutParams) toolbar.getLayoutParams();
+        lp.topMargin += getStatusBarHeight();
+        appBarLayout.bringToFront();
         fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 SphereSurfaceView.USE_TOUCH = !SphereSurfaceView.USE_TOUCH;
-                fab.setVisibility(View.INVISIBLE);
+                displayUI(false);
             }
         });
+
+        // Initialize renderer and setup surface view.
+        LinearLayout container = (LinearLayout) findViewById(R.id.container);
+        surfaceView = new SphereSurfaceView(this);
+        container.addView(surfaceView);
+        renderer = new Renderer(surfaceView);
 
         // Detect gestures like single taps.
         final GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent event) {
-                if (fab.isShown()) {
-                    fab.setVisibility(View.INVISIBLE);
-                } else {
-                    fab.show();
-                }
+                displayUI(!fab.isShown());
                 return true;
             }
 
@@ -88,10 +98,38 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void displayUI(boolean display) {
+        if (display) {
+            fab.show();
+            appBarLayout.setExpanded(true, true);
+        } else {
+            fab.setVisibility(View.INVISIBLE);
+            appBarLayout.setExpanded(false, true);
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
-        fab.show();
+        displayUI(true);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_force_sphere:
+                Toast.makeText(this, R.string.not_yet_implemented, Toast.LENGTH_SHORT).show();
+                return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     /**
@@ -184,6 +222,15 @@ public class MainActivity extends AppCompatActivity {
      */
     private void displayFlatImage(InputStream inputStream) {
         Log.d(TAG, "Display Flat Image!");
+    }
+
+    public int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
     }
 
 }

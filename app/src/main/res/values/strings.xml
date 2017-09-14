@@ -4,4 +4,6 @@
     <string name="file_not_found">File not found.</string>
     <string name="ioerror">An Error has occurred: IOError.</string>
     <string name="wow">WOW! SUCH 3D!!!</string>
+    <string name="menu_force_sphere">Show as Sphere</string>
+    <string name="not_yet_implemented">Not yet implemented!</string>
 </resources>
