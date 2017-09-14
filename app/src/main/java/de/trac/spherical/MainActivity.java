@@ -112,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
             //App was launched via launcher icon
             //TODO: Remove later together with launcher intent filter
             default:
-                Toast.makeText(this, R.string.prompt_share_image, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.toast_prompt_share_image, Toast.LENGTH_LONG).show();
         }
     }
 
@@ -139,9 +139,8 @@ public class MainActivity extends AppCompatActivity {
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     handleSentImageIntent(cachedIntent);
                 } else {
-                    Toast.makeText(this, R.string.missing_permission, Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.toast_missing_permission, Toast.LENGTH_LONG).show();
                 }
-                return;
             }
         }
     }
@@ -173,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_force_sphere:
-                Toast.makeText(this, R.string.not_yet_implemented, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_not_yet_implemented, Toast.LENGTH_SHORT).show();
                 return true;
         }
 
@@ -191,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
 
             Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
             if (imageUri == null) {
-                Toast.makeText(this, R.string.file_not_found, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -227,9 +226,11 @@ public class MainActivity extends AppCompatActivity {
             }
 
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            Log.e(TAG, "File not found.", e);
+            Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "IOException: ", e);
+            Toast.makeText(this, R.string.toast_io_error, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -252,10 +253,10 @@ public class MainActivity extends AppCompatActivity {
 
         } catch (FileNotFoundException e) {
             Log.e(TAG, "File not found.", e);
-            Toast.makeText(this, R.string.file_not_found, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
             Log.e(TAG, "IOException: ", e);
-            Toast.makeText(this, R.string.ioerror, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_io_error, Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -1,2 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources></resources>
+<resources>
+    <string name="menu_force_sphere">Erzwinge Kugelansicht</string>
+    <string name="toast_file_not_found">Datei nicht gefunden.</string>
+    <string name="toast_io_error">Ein Fehler ist aufgetreten: IO-Error.</string>
+    <string name="toast_missing_permission">Foto kann nicht angezeigt werden: Fehlende Berechtigung für externen Speicher.</string>
+    <string name="toast_not_yet_implemented">Noch nicht implementiert!</string>
+    <string name="toast_prompt_share_image">Teile ein Bild mit der App!</string>
+</resources>
