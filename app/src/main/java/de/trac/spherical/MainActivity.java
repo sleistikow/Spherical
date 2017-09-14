@@ -3,12 +3,14 @@ package de.trac.spherical;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import java.io.FileNotFoundException;
@@ -30,21 +32,38 @@ public class MainActivity extends AppCompatActivity {
 
     private SphereSurfaceView surfaceView;
     private Renderer renderer;
+    private FloatingActionButton fab;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
         // Initialize renderer and setup surface view.
         surfaceView = new SphereSurfaceView(this);
         renderer = new Renderer(surfaceView);
-        setContentView(surfaceView);
+        ((LinearLayout) findViewById(R.id.container)).addView(surfaceView);
+
+        fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SphereSurfaceView.USE_TOUCH = !SphereSurfaceView.USE_TOUCH;
+                fab.hide();
+            }
+        });
+        fab.hide();
+
 
         // Detect gestures like single taps.
         final GestureDetector mGesDetect = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent event) {
-                SphereSurfaceView.USE_TOUCH = !SphereSurfaceView.USE_TOUCH;
+                if (fab.isShown()) {
+                    fab.hide();
+                } else {
+                    fab.show();
+                }
                 return true;
             }
         });
