@@ -6,4 +6,5 @@
     <string name="wow">WOW! SUCH 3D!!!</string>
     <string name="menu_force_sphere">Show as Sphere</string>
     <string name="not_yet_implemented">Not yet implemented!</string>
+    <string name="missing_permission">Cannot display photo: Missing permissions to access external storage.</string>
 </resources>
