@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         // Prepare UI
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
         appBarLayout = (AppBarLayout) findViewById(R.id.lay_toolbar);
         AppBarLayout.LayoutParams lp = (AppBarLayout.LayoutParams) toolbar.getLayoutParams();
         lp.topMargin += getStatusBarHeight();
