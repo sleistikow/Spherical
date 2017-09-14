@@ -7,6 +7,7 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.os.Build;
 import android.view.MotionEvent;
 
 /**
@@ -29,8 +30,13 @@ public class SphereSurfaceView extends GLSurfaceView implements SensorEventListe
         Matrix.setIdentityM(rotationMatrix, 0);
 
         SensorManager manager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-        Sensor accelerometer = manager.getSensorList(Sensor.TYPE_ROTATION_VECTOR).get(0);
-        manager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_GAME);
+        Sensor sensor;
+        if (Build.VERSION.SDK_INT >= 18) {
+            sensor = manager.getSensorList(Sensor.TYPE_GAME_ROTATION_VECTOR).get(0);
+        } else {
+            sensor = manager.getSensorList(Sensor.TYPE_ROTATION_VECTOR).get(0);
+        }
+        manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME);
     }
 
     @Override
