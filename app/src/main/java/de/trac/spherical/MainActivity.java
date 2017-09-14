@@ -119,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
     private void checkPermissionAndHandleSentImage(Intent intent) {
         int status = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
         if (status == PackageManager.PERMISSION_GRANTED) {
-            handleSentImageIntent(intent);
+            new HandleImageTask(this).doInBackground(intent);
         }
 
         // Cache intent and request permission
@@ -137,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    handleSentImageIntent(cachedIntent);
+                    new HandleImageTask(this).doInBackground(cachedIntent);
                 } else {
                     Toast.makeText(this, R.string.toast_missing_permission, Toast.LENGTH_LONG).show();
                 }
@@ -184,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
      * displayed, while images with MIME type image/* are being manually tested using {@link PhotoSphereParser}.
      * @param intent incoming intent.
      */
-    private void handleSentImageIntent(Intent intent) {
+    void handleSentImageIntent(Intent intent) {
         String type = intent.getType();
         if (type != null) {
 
