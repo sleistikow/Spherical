@@ -3,6 +3,7 @@ package de.trac.spherical;
 import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
@@ -15,7 +16,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import java.io.FileNotFoundException;
@@ -38,7 +42,6 @@ public class MainActivity extends AppCompatActivity {
     private Renderer renderer;
     private FloatingActionButton fab;
     private Toolbar toolbar;
-    private AppBarLayout appBarLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,10 +52,9 @@ public class MainActivity extends AppCompatActivity {
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
-        appBarLayout = (AppBarLayout) findViewById(R.id.lay_toolbar);
-        AppBarLayout.LayoutParams lp = (AppBarLayout.LayoutParams) toolbar.getLayoutParams();
+        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) toolbar.getLayoutParams();
         lp.topMargin += getStatusBarHeight();
-        appBarLayout.bringToFront();
+        toolbar.bringToFront();
         fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -61,6 +63,11 @@ public class MainActivity extends AppCompatActivity {
                 displayUI(false);
             }
         });
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            Window w = getWindow();
+            w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        }
 
         // Initialize renderer and setup surface view.
         LinearLayout container = (LinearLayout) findViewById(R.id.container);
@@ -102,10 +109,10 @@ public class MainActivity extends AppCompatActivity {
     private void displayUI(boolean display) {
         if (display) {
             fab.show();
-            appBarLayout.setExpanded(true, true);
+            toolbar.setVisibility(View.VISIBLE);
         } else {
             fab.setVisibility(View.INVISIBLE);
-            appBarLayout.setExpanded(false, true);
+            toolbar.setVisibility(View.GONE);
         }
     }
 
@@ -223,6 +230,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void displayFlatImage(InputStream inputStream) {
         Log.d(TAG, "Display Flat Image!");
+        displayPhotoSphere(inputStream, new PhotoSphereMetadata());
     }
 
     public int getStatusBarHeight() {
