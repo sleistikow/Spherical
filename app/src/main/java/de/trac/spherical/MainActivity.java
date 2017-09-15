@@ -1,11 +1,15 @@
 package de.trac.spherical;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -15,7 +19,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import java.io.FileNotFoundException;
@@ -34,11 +41,14 @@ public class MainActivity extends AppCompatActivity {
     public static final String MIME_PHOTO_SPHERE = "application/vnd.google.panorama360+jpg";
     public static final String MIME_IMAGE = "image/*";
 
+    private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 387;
+
     private SphereSurfaceView surfaceView;
     private Renderer renderer;
     private FloatingActionButton fab;
     private Toolbar toolbar;
-    private AppBarLayout appBarLayout;
+
+    private Intent cachedIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,10 +59,9 @@ public class MainActivity extends AppCompatActivity {
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
-        appBarLayout = (AppBarLayout) findViewById(R.id.lay_toolbar);
-        AppBarLayout.LayoutParams lp = (AppBarLayout.LayoutParams) toolbar.getLayoutParams();
+        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) toolbar.getLayoutParams();
         lp.topMargin += getStatusBarHeight();
-        appBarLayout.bringToFront();
+        toolbar.bringToFront();
         fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -61,6 +70,11 @@ public class MainActivity extends AppCompatActivity {
                 displayUI(false);
             }
         });
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            Window w = getWindow();
+            w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        }
 
         // Initialize renderer and setup surface view.
         LinearLayout container = (LinearLayout) findViewById(R.id.container);
@@ -85,27 +99,59 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Intent intent = getIntent();
+        handleIntent(getIntent());
+    }
+
+    private void handleIntent(Intent intent) {
         switch (intent.getAction()) {
             //Image was sent into the app
             case Intent.ACTION_SEND:
-                handleSentImageIntent(intent);
+                checkPermissionAndHandleSentImage(intent);
                 break;
 
             //App was launched via launcher icon
             //TODO: Remove later together with launcher intent filter
             default:
-                Toast.makeText(this, R.string.prompt_share_image, Toast.LENGTH_LONG).show();
+                Toast.makeText(this, R.string.toast_prompt_share_image, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void checkPermissionAndHandleSentImage(Intent intent) {
+        int status = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
+        if (status == PackageManager.PERMISSION_GRANTED) {
+            new HandleImageTask(this).doInBackground(intent);
+        }
+
+        // Cache intent and request permission
+        this.cachedIntent = intent;
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
+                PERMISSION_REQUEST_READ_EXTERNAL_STORAGE);
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_READ_EXTERNAL_STORAGE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    new HandleImageTask(this).doInBackground(cachedIntent);
+                } else {
+                    Toast.makeText(this, R.string.toast_missing_permission, Toast.LENGTH_LONG).show();
+                }
+            }
         }
     }
 
     private void displayUI(boolean display) {
         if (display) {
             fab.show();
-            appBarLayout.setExpanded(true, true);
+            toolbar.setVisibility(View.VISIBLE);
         } else {
             fab.setVisibility(View.INVISIBLE);
-            appBarLayout.setExpanded(false, true);
+            toolbar.setVisibility(View.GONE);
         }
     }
 
@@ -126,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_force_sphere:
-                Toast.makeText(this, R.string.not_yet_implemented, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_not_yet_implemented, Toast.LENGTH_SHORT).show();
                 return true;
         }
 
@@ -138,13 +184,13 @@ public class MainActivity extends AppCompatActivity {
      * displayed, while images with MIME type image/* are being manually tested using {@link PhotoSphereParser}.
      * @param intent incoming intent.
      */
-    private void handleSentImageIntent(Intent intent) {
+    void handleSentImageIntent(Intent intent) {
         String type = intent.getType();
         if (type != null) {
 
             Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
             if (imageUri == null) {
-                Toast.makeText(this, R.string.file_not_found, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -180,9 +226,11 @@ public class MainActivity extends AppCompatActivity {
             }
 
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            Log.e(TAG, "File not found.", e);
+            Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "IOException: ", e);
+            Toast.makeText(this, R.string.toast_io_error, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -205,10 +253,10 @@ public class MainActivity extends AppCompatActivity {
 
         } catch (FileNotFoundException e) {
             Log.e(TAG, "File not found.", e);
-            Toast.makeText(this, R.string.file_not_found, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
             Log.e(TAG, "IOException: ", e);
-            Toast.makeText(this, R.string.ioerror, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_io_error, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -223,6 +271,7 @@ public class MainActivity extends AppCompatActivity {
      */
     private void displayFlatImage(InputStream inputStream) {
         Log.d(TAG, "Display Flat Image!");
+        displayPhotoSphere(inputStream, new PhotoSphereMetadata());
     }
 
     public int getStatusBarHeight() {

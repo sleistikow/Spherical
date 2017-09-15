@@ -169,32 +169,45 @@ public class PhotoSphereParser {
 
     private static Integer parseInteger(String key, String xmp, Integer defaultValue) {
         String value = parseString(key, xmp);
-        return value == null ? defaultValue : Integer.parseInt(value);
+        if (value == null) {
+            return defaultValue;
+        }
+        return Integer.parseInt(value);
+
     }
 
     private static Float parseFloat(String key, String xmp, Float defaultValue) {
         String value = parseString(key, xmp);
         if (value == null) {
             return defaultValue;
-        } else {
-            return Float.parseFloat(value);
         }
+        return Float.parseFloat(value);
+
     }
 
     private static Boolean parseBoolean(String key, String xmp, Boolean defaultValue) {
         String value = parseString(key, xmp);
-        return value == null ? defaultValue : Boolean.parseBoolean(value);
+        if (value == null) {
+            return defaultValue;
+        }
+        return Boolean.parseBoolean(value);
     }
 
     private static ProjectionType parseType(String key, String xmp, ProjectionType defaultValue) {
         String value = parseString(key, xmp);
-        return value == null ? defaultValue : ProjectionType.equirectangular;
+        if (value == null) {
+            return defaultValue;
+        }
+        return ProjectionType.equirectangular;
     }
 
     private static Date parseDate(String key, String xmp, Date defaultValue) {
         String value = parseString(key, xmp);
         try {
-            return value == null ? defaultValue : dateFormat.parse(value);
+            if (value == null) {
+                return defaultValue;
+            }
+            return dateFormat.parse(value);
         } catch (ParseException e) {
             return defaultValue;
         }
