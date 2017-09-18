@@ -31,8 +31,7 @@ import java.io.InputStream;
 
 import de.trac.spherical.parser.PhotoSphereMetadata;
 import de.trac.spherical.parser.PhotoSphereParser;
-import de.trac.spherical.rendering.Renderer;
-import de.trac.spherical.rendering.SphereSurfaceView;
+import de.trac.spherical.rendering.PhotoSphereSurfaceView;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -43,8 +42,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 387;
 
-    private SphereSurfaceView surfaceView;
-    private Renderer renderer;
+    private PhotoSphereSurfaceView surfaceView;
     private FloatingActionButton fab;
     private Toolbar toolbar;
 
@@ -66,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                SphereSurfaceView.USE_TOUCH = !SphereSurfaceView.USE_TOUCH;
+                PhotoSphereSurfaceView.USE_TOUCH = !PhotoSphereSurfaceView.USE_TOUCH;
                 displayUI(false);
             }
         });
@@ -78,9 +76,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize renderer and setup surface view.
         LinearLayout container = (LinearLayout) findViewById(R.id.container);
-        surfaceView = new SphereSurfaceView(this);
+        surfaceView = new PhotoSphereSurfaceView(this);
         container.addView(surfaceView);
-        renderer = new Renderer(surfaceView);
 
         // Detect gestures like single taps.
         final GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
@@ -261,8 +258,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void displayPhotoSphere(InputStream inputStream, PhotoSphereMetadata metadata) {
-        renderer.setBitmap(BitmapFactory.decodeStream(inputStream));
-        Log.d(TAG, "Display Photo Sphere!");
+        surfaceView.setBitmap(BitmapFactory.decodeStream(inputStream));
+        Log.d(TAG, "Display Photo PhotoSphere!");
     }
 
     /**

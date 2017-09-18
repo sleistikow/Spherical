@@ -3,6 +3,7 @@ package de.trac.spherical.rendering;
 
 import android.graphics.Bitmap;
 import android.opengl.GLSurfaceView;
+import android.opengl.GLU;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.util.Log;
@@ -60,7 +61,7 @@ import static android.opengl.GLES20.glUseProgram;
 import static android.opengl.GLES20.glVertexAttribPointer;
 import static android.opengl.GLES20.glViewport;
 
-public class Renderer implements GLSurfaceView.Renderer {
+public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
 
     /**
      * Default vertex shader.
@@ -92,20 +93,28 @@ public class Renderer implements GLSurfaceView.Renderer {
                     "  gl_FragColor = texture2D(tex, uv);\n" +
                     "}\n";
 
-    // Store a sphere geometry as framework for the photo texture.
-    private Sphere sphere = null;
+    // Sphere configuration.
+    public static final int SPHERE_POLY_COUNT_X = 32;
+    public static final int SPHERE_POLY_COUNT_Y = 32;
+    public static final float SPHERE_RADIUS = 10.0f;
+
+    // Store a photoSphereGeometry geometry as framework for the photo texture.
+    private PhotoSphereGeometry photoSphereGeometry = null;
 
     // Store projection matrix.
-    private float projMatrix [] = new float [16];
+    private float projectionMatrix[] = new float [16];
 
     // Store modelview matrix.
-    private float modlMatrix [] = new float [16];
+    private float modelMatrix[] = new float [16];
 
     // Store view matrix.
     private float viewMatrix [] = new float [16];
 
     // Store the model view projection matrix.
     private float mvpMatrix [] = new float [16];
+
+    // This array contains the current view matrix {x, y, width, height).
+    private int view [] = null;
 
     // Store shader name.
     private int programID;
@@ -123,13 +132,13 @@ public class Renderer implements GLSurfaceView.Renderer {
     private Bitmap bitmap = null;
 
     // Store input handler instance to determine transformation.
-    private SphereSurfaceView surfaceView;
+    private PhotoSphereSurfaceView surfaceView;
 
     /**
      * Constructor. Will be set as renderer of the specified surface view.
      * @param surfaceView SurfaceView which will own the renderer
      */
-    public Renderer(SphereSurfaceView surfaceView) {
+    public PhotoSphereRenderer(PhotoSphereSurfaceView surfaceView) {
         if(surfaceView == null)
             throw new NullPointerException("SurfaceView must not be null");
 
@@ -157,23 +166,23 @@ public class Renderer implements GLSurfaceView.Renderer {
         }
 
         // Update transformation matrix.
-        Matrix.multiplyMM(mvpMatrix, 0, surfaceView.getRotationMatrix(), 0, modlMatrix, 0);
-        Matrix.multiplyMM(mvpMatrix, 0, projMatrix, 0, mvpMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 0, surfaceView.getRotationMatrix(), 0, modelMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvpMatrix, 0);
 
         // Draw the frame.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(programID);
 
         glEnableVertexAttribArray(positionLocation);
-        glVertexAttribPointer(positionLocation, 3, GL_FLOAT, false, 3*4, sphere.getVertexBuffer());
+        glVertexAttribPointer(positionLocation, 3, GL_FLOAT, false, 3*4, photoSphereGeometry.getVertexBuffer());
 
         glEnableVertexAttribArray(textureCoordinatesLocation);
-        glVertexAttribPointer(textureCoordinatesLocation, 2, GL_FLOAT, false, 2*4, sphere.getTextureCoordinatesBuffer());
+        glVertexAttribPointer(textureCoordinatesLocation, 2, GL_FLOAT, false, 2*4, photoSphereGeometry.getTextureCoordinatesBuffer());
 
         glUniformMatrix4fv(mvpLocation, 1, false, mvpMatrix, 0);
         glUniform1i(texLocation, 0);
         glBindTexture(GL_TEXTURE_2D, textureID[0]);
-        glDrawElements(GL_TRIANGLES, sphere.getIndexBuffer().capacity(), GL_UNSIGNED_SHORT, sphere.getIndexBuffer());
+        glDrawElements(GL_TRIANGLES, photoSphereGeometry.getIndexBuffer().capacity(), GL_UNSIGNED_SHORT, photoSphereGeometry.getIndexBuffer());
         glBindTexture(GL_TEXTURE_2D, 0);
 
         glDisableVertexAttribArray(textureCoordinatesLocation);
@@ -190,9 +199,10 @@ public class Renderer implements GLSurfaceView.Renderer {
      * @param height new height of the surface
      */
     public void onSurfaceChanged(GL10 unused, int width, int height) {
+        view = new int[]{0, 0, width, height};
         glViewport(0, 0, width, height);
         float ratio = (float) width / height;
-        Matrix.perspectiveM(projMatrix, 0, 45.0f, ratio, 0.25f, 128.0f);
+        Matrix.perspectiveM(projectionMatrix, 0, 45.0f, ratio, 0.25f, 128.0f);
     }
 
     /**
@@ -203,8 +213,8 @@ public class Renderer implements GLSurfaceView.Renderer {
      */
     public void onSurfaceCreated(GL10 unused, EGLConfig config) {
 
-        // Initialize sphere.
-        sphere = new Sphere(10.0f, 32, 32); // TODO: choose useful parameters.
+        // Initialize photoSphereGeometry.
+        photoSphereGeometry = new PhotoSphereGeometry(SPHERE_RADIUS, SPHERE_POLY_COUNT_X, SPHERE_POLY_COUNT_Y);
 
         // Set OpenGL state.
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -220,16 +230,29 @@ public class Renderer implements GLSurfaceView.Renderer {
         glGenTextures(1, textureID, 0);
 
         // Initialize matrices.
-        Matrix.setRotateM(modlMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
+        Matrix.setRotateM(modelMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
         Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
     }
 
     /**
-     * Uploads the image data of the given bitmap into the internal texture.
+     * Requests the renderer to uploads the image data of the given bitmap as texture.
+     * May not be done immediately.
      * @param bitmap Bitmap to be set as texture
      */
-    public void setBitmap(Bitmap bitmap) {
+    public void requestBitmapUpload(Bitmap bitmap) {
         this.bitmap = bitmap;
+    }
+
+    /**
+     * Takes screen coordinates and transforms them into world space
+     * @param x x coordinate
+     * @param y y coordinate
+     * @param outRayStart will be filled by the start position of the ray
+     * @param outRayDirection will be filled by the direction of the ray
+     */
+    public void getRay(float x, float y, float [] outRayStart, float [] outRayDirection) {
+        GLU.gluUnProject(x, y, 0.0f, modelMatrix, 0, projectionMatrix, 0, view, 0, outRayStart, 0);
+        GLU.gluUnProject(x, y, 1.0f, modelMatrix, 0, projectionMatrix, 0, view, 0, outRayDirection, 0);
     }
 
     /**

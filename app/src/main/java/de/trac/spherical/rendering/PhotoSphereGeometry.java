@@ -9,14 +9,20 @@ import java.nio.ShortBuffer;
  * This class is used to create native buffers holding vertices and
  * texture coordinates of a sphere with a given radius.
  */
-public class Sphere {
+public class PhotoSphereGeometry {
 
     // The following attributes make up our sphere.
     private FloatBuffer vertexBuffer;
     private FloatBuffer textureCoordinatesBuffer;
     private ShortBuffer indexBuffer;
 
-    public Sphere(float radius, int polyCountX, int polyCountY) {
+    /**
+     * Initializes the native buffers with a sphere based on the specified parameters.
+     * @param radius the sphere's radius
+     * @param polyCountX the number of polygons around the sphere in x direction
+     * @param polyCountY the number of polygons around the sphere in y direction
+     */
+    public PhotoSphereGeometry(float radius, int polyCountX, int polyCountY) {
 
         final int polyCountXPitch = polyCountX + 1;
 
