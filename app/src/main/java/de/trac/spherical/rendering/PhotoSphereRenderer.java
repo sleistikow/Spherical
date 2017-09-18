@@ -87,6 +87,7 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
      * Out: sets fragment color
      */
     private static final String DEFAULT_FRAGMENT_SHADER =
+                    "precision mediump float;\n" +
                     "varying vec2 uv;\n" +
                     "uniform sampler2D tex;\n" +
                     "void main() {\n" +
