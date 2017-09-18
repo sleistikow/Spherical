@@ -3,13 +3,17 @@ package de.trac.spherical;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.GestureDetectorCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -21,38 +25,75 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 
 import de.trac.spherical.parser.PhotoSphereMetadata;
 import de.trac.spherical.parser.PhotoSphereParser;
 import de.trac.spherical.rendering.PhotoSphereSurfaceView;
 
+
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "Spherical";
-
     public static final String MIME_PHOTO_SPHERE = "application/vnd.google.panorama360+jpg";
-    public static final String MIME_IMAGE = "image/*";
-
     private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 387;
 
-    private PhotoSphereSurfaceView surfaceView;
+    private FragmentManager fm;
+
+    //UI
     private FloatingActionButton fab;
     private Toolbar toolbar;
+    private GestureDetectorCompat gestureDetector;
 
+    private ProgressFragment progressFragment;
+    private FlatFragment flatFragment;
+    private SphereFragment sphereFragment;
+
+    //Cache
     private Intent cachedIntent;
+    private Bitmap bitmap;
+    private PhotoSphereMetadata metadata;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setupUI();
 
+        fm = getSupportFragmentManager();
+
+        handleIntent(getIntent());
+    }
+
+    private ProgressFragment showProgressFragment() {
+        if (progressFragment == null) {
+            progressFragment = new ProgressFragment();
+        }
+        fm.beginTransaction().replace(R.id.container_fragment, progressFragment, "prog").commit();
+        return progressFragment;
+    }
+
+    private FlatFragment showFlatImageFragment() {
+        if (flatFragment == null) {
+            flatFragment = new FlatFragment();
+        }
+        fm.beginTransaction().replace(R.id.container_fragment, flatFragment, "flat").commit();
+        return flatFragment;
+    }
+
+    private SphereFragment showSphereFragment() {
+        if (sphereFragment == null) {
+            sphereFragment = new SphereFragment();
+        }
+        fm.beginTransaction().replace(R.id.container_fragment, sphereFragment, "sphere").commit();
+        return sphereFragment;
+    }
+
+    private void setupUI() {
         // Prepare UI
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -73,14 +114,8 @@ public class MainActivity extends AppCompatActivity {
             Window w = getWindow();
             w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         }
-
-        // Initialize renderer and setup surface view.
-        LinearLayout container = (LinearLayout) findViewById(R.id.container);
-        surfaceView = new PhotoSphereSurfaceView(this);
-        container.addView(surfaceView);
-
         // Detect gestures like single taps.
-        final GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+        gestureDetector = new GestureDetectorCompat(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent event) {
                 displayUI(!fab.isShown());
@@ -88,15 +123,6 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-
-        surfaceView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                return gestureDetector.onTouchEvent(event);
-            }
-        });
-
-        handleIntent(getIntent());
     }
 
     private void handleIntent(Intent intent) {
@@ -116,25 +142,26 @@ public class MainActivity extends AppCompatActivity {
     private void checkPermissionAndHandleSentImage(Intent intent) {
         int status = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
         if (status == PackageManager.PERMISSION_GRANTED) {
-            new HandleImageTask(this).doInBackground(intent);
+            showProgressFragment();
+            new HandleSentImageTask().doInBackground(intent);
+            return;
         }
 
         // Cache intent and request permission
         this.cachedIntent = intent;
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                 PERMISSION_REQUEST_READ_EXTERNAL_STORAGE);
-
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
             case PERMISSION_REQUEST_READ_EXTERNAL_STORAGE: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    new HandleImageTask(this).doInBackground(cachedIntent);
+                    showProgressFragment();
+                    new HandleSentImageTask().doInBackground(cachedIntent);
                 } else {
                     Toast.makeText(this, R.string.toast_missing_permission, Toast.LENGTH_LONG).show();
                 }
@@ -177,8 +204,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Distinguish type of sent image. Images with the MIME type of a photosphere will be directly
-     * displayed, while images with MIME type image/* are being manually tested using {@link PhotoSphereParser}.
+     * Distinguish type of sent bitmap. Images with the MIME type of a photosphere will be directly
+     * displayed, while images with MIME type bitmap/* are being manually tested using {@link PhotoSphereParser}.
      * @param intent incoming intent.
      */
     void handleSentImageIntent(Intent intent) {
@@ -191,13 +218,28 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            Log.d(TAG, "START LOADING BITMAP");
+            try {
+                bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
+                metadata = PhotoSphereParser.parse(getContentResolver().openInputStream(imageUri));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Log.d(TAG, "FINISHED LOADING BITMAP");
+
             switch (type) {
                 case MIME_PHOTO_SPHERE:
-                    displayPhotoSphere(imageUri);
+                    displayPhotoSphere();
                     break;
 
                 default:
-                    displayMaybePhotoSphere(imageUri);
+                    if (metadata != null) {
+                        displayPhotoSphere();
+                    } else {
+                        displayFlatImage();
+                    }
                     break;
             }
 
@@ -207,71 +249,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Check, whether the sent photo is a photo sphere and display either a sphere, or a plain image.
-     * @param uri
-     */
-    private void displayMaybePhotoSphere(Uri uri) {
-        try {
-            InputStream inputStream = getContentResolver().openInputStream(uri);
-            String xml = PhotoSphereParser.getXMLContent(inputStream);
-            PhotoSphereMetadata metadata = PhotoSphereParser.parse(xml);
-
-            if (metadata == null || !metadata.isUsePanoramaViewer()) {
-                displayFlatImage(getContentResolver().openInputStream(uri));
-            } else {
-                displayPhotoSphere(getContentResolver().openInputStream(uri), metadata);
-            }
-
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "File not found.", e);
-            Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            Log.e(TAG, "IOException: ", e);
-            Toast.makeText(this, R.string.toast_io_error, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
      * Display a photo sphere.
-     * @param uri
      */
-    private void displayPhotoSphere(Uri uri) {
-        try {
-            InputStream inputStream = getContentResolver().openInputStream(uri);
-            String xml = PhotoSphereParser.getXMLContent(inputStream);
-            PhotoSphereMetadata metadata = PhotoSphereParser.parse(xml);
-
-            if (metadata == null) {
-                Log.e(TAG, "Metadata is null. Fall back to flat image.");
-                displayFlatImage(getContentResolver().openInputStream(uri));
-            }
-
-            displayPhotoSphere(getContentResolver().openInputStream(uri), metadata);
-
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "File not found.", e);
-            Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            Log.e(TAG, "IOException: ", e);
-            Toast.makeText(this, R.string.toast_io_error, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void displayPhotoSphere(InputStream inputStream, PhotoSphereMetadata metadata) {
-        surfaceView.setBitmap(BitmapFactory.decodeStream(inputStream));
-        Log.d(TAG, "Display Photo PhotoSphere!");
+    private void displayPhotoSphere() {
+        SphereFragment spf = showSphereFragment();
+        spf.displayPhotoSphere(bitmap);
     }
 
     /**
-     * Display a flat image.
-     * @param inputStream
+     * Display a flat bitmap.
      */
-    private void displayFlatImage(InputStream inputStream) {
+    private void displayFlatImage() {
         Log.d(TAG, "Display Flat Image!");
-        displayPhotoSphere(inputStream, new PhotoSphereMetadata());
+        //displayPhotoSphere(inputStream, new PhotoSphereMetadata());
     }
 
-    public int getStatusBarHeight() {
+    private int getStatusBarHeight() {
         int result = 0;
         int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
         if (resourceId > 0) {
@@ -280,4 +273,20 @@ public class MainActivity extends AppCompatActivity {
         return result;
     }
 
+    public GestureDetectorCompat getGestureDetector() {
+        return gestureDetector;
+    }
+
+    public Bitmap getBitmap() {
+        return bitmap;
+    }
+
+    private class HandleSentImageTask extends AsyncTask<Intent, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Intent... params) {
+            handleSentImageIntent(params[0]);
+            return null;
+        }
+    }
 }
