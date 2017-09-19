@@ -22,14 +22,16 @@
         app:theme="@style/AppTheme.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat" />
 
-    <LinearLayout
-        android:id="@+id/container"
+
+
+    <FrameLayout
+        android:id="@+id/container_fragment"
         android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:layout_editor_absoluteY="8dp"
         tools:layout_editor_absoluteX="8dp">
-    </LinearLayout>
+    </FrameLayout>
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab"
@@ -43,7 +45,7 @@
         android:layout_marginRight="16dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_anchor="@id/container"
+        app:layout_anchor="@id/container_fragment"
         app:layout_anchorGravity="bottom|right|end" />
 
 </RelativeLayout>

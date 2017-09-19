@@ -150,6 +150,11 @@ public class PhotoSphereParser {
         return meta;
     }
 
+    public static PhotoSphereMetadata parse(InputStream inputStream) throws IOException {
+        String xml = getXMLContent(inputStream);
+        return parse(xml);
+    }
+
     private static void throwIfUnexpectedEOF(int actual, int expected) throws EOFException {
         if (actual != expected) {
             throw new EOFException("Unexpected EOF!");
