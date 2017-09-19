@@ -3,7 +3,9 @@
     <string name="toast_prompt_share_image">Share an image with the app!</string>
     <string name="toast_file_not_found">File not found.</string>
     <string name="toast_io_error">An Error has occurred: IO-Error.</string>
-    <string name="menu_force_sphere">Show as Sphere</string>
+    <string name="menu_force_sphere">Sphere View</string>
     <string name="toast_not_yet_implemented">Not yet implemented!</string>
     <string name="toast_missing_permission">Cannot display photo: Missing permissions to access external storage.</string>
+    <string name="menu_force_flat">Flat View</string>
+    <string name="menu_about">About Spherical</string>
 </resources>

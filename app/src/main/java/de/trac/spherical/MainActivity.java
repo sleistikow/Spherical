@@ -28,7 +28,6 @@ import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import de.trac.spherical.parser.PhotoSphereMetadata;
@@ -49,9 +48,10 @@ public class MainActivity extends AppCompatActivity {
     private Toolbar toolbar;
     private GestureDetectorCompat gestureDetector;
 
-    private ProgressFragment progressFragment;
-    private FlatFragment flatFragment;
-    private SphereFragment sphereFragment;
+    private ProgressFragment progressFragment = new ProgressFragment();
+    private FlatFragment flatFragment = new FlatFragment();
+    private SphereFragment sphereFragment = new SphereFragment();
+    private ImageFragment currentlyShownImageFragment;
 
     //Cache
     private Intent cachedIntent;
@@ -69,28 +69,19 @@ public class MainActivity extends AppCompatActivity {
         handleIntent(getIntent());
     }
 
-    private ProgressFragment showProgressFragment() {
-        if (progressFragment == null) {
-            progressFragment = new ProgressFragment();
-        }
+    private void showProgressFragment() {
         fm.beginTransaction().replace(R.id.container_fragment, progressFragment, "prog").commit();
-        return progressFragment;
+        this.currentlyShownImageFragment = null;
     }
 
-    private FlatFragment showFlatImageFragment() {
-        if (flatFragment == null) {
-            flatFragment = new FlatFragment();
-        }
+    private void showFlatImageFragment() {
         fm.beginTransaction().replace(R.id.container_fragment, flatFragment, "flat").commit();
-        return flatFragment;
+        this.currentlyShownImageFragment = flatFragment;
     }
 
-    private SphereFragment showSphereFragment() {
-        if (sphereFragment == null) {
-            sphereFragment = new SphereFragment();
-        }
+    private void showSphereFragment() {
         fm.beginTransaction().replace(R.id.container_fragment, sphereFragment, "sphere").commit();
-        return sphereFragment;
+        this.currentlyShownImageFragment = sphereFragment;
     }
 
     private void setupUI() {
@@ -129,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
         switch (intent.getAction()) {
             //Image was sent into the app
             case Intent.ACTION_SEND:
+                showProgressFragment();
                 checkPermissionAndHandleSentImage(intent);
                 break;
 
@@ -142,8 +134,7 @@ public class MainActivity extends AppCompatActivity {
     private void checkPermissionAndHandleSentImage(Intent intent) {
         int status = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
         if (status == PackageManager.PERMISSION_GRANTED) {
-            showProgressFragment();
-            new HandleSentImageTask().doInBackground(intent);
+            handleSentImageIntent(intent);
             return;
         }
 
@@ -160,8 +151,7 @@ public class MainActivity extends AppCompatActivity {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    showProgressFragment();
-                    new HandleSentImageTask().doInBackground(cachedIntent);
+                    handleSentImageIntent(cachedIntent);
                 } else {
                     Toast.makeText(this, R.string.toast_missing_permission, Toast.LENGTH_LONG).show();
                 }
@@ -188,14 +178,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.main_menu, menu);
+        inflater.inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.menu_force_sphere:
+            case R.id.menu_about:
                 Toast.makeText(this, R.string.toast_not_yet_implemented, Toast.LENGTH_SHORT).show();
                 return true;
         }
@@ -209,6 +199,9 @@ public class MainActivity extends AppCompatActivity {
      * @param intent incoming intent.
      */
     void handleSentImageIntent(Intent intent) {
+        if (intent == null) {
+            throw new AssertionError("Intent is null!");
+        }
         String type = intent.getType();
         if (type != null) {
 
@@ -222,8 +215,6 @@ public class MainActivity extends AppCompatActivity {
             try {
                 bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
                 metadata = PhotoSphereParser.parse(getContentResolver().openInputStream(imageUri));
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -251,17 +242,17 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Display a photo sphere.
      */
-    private void displayPhotoSphere() {
-        SphereFragment spf = showSphereFragment();
-        spf.displayPhotoSphere(bitmap);
+    public void displayPhotoSphere() {
+        showSphereFragment();
+        currentlyShownImageFragment.updateBitmap(bitmap);
     }
 
     /**
      * Display a flat bitmap.
      */
-    private void displayFlatImage() {
-        Log.d(TAG, "Display Flat Image!");
-        //displayPhotoSphere(inputStream, new PhotoSphereMetadata());
+    public void displayFlatImage() {
+        showFlatImageFragment();
+        currentlyShownImageFragment.updateBitmap(bitmap);
     }
 
     private int getStatusBarHeight() {
@@ -286,6 +277,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected Void doInBackground(Intent... params) {
             handleSentImageIntent(params[0]);
+
             return null;
         }
     }
