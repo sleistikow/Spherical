@@ -6,9 +6,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
@@ -69,21 +69,9 @@ public class MainActivity extends AppCompatActivity {
         handleIntent(getIntent());
     }
 
-    private void showProgressFragment() {
-        fm.beginTransaction().replace(R.id.container_fragment, progressFragment, "prog").commit();
-        this.currentlyShownImageFragment = null;
-    }
-
-    private void showFlatImageFragment() {
-        fm.beginTransaction().replace(R.id.container_fragment, flatFragment, "flat").commit();
-        this.currentlyShownImageFragment = flatFragment;
-    }
-
-    private void showSphereFragment() {
-        fm.beginTransaction().replace(R.id.container_fragment, sphereFragment, "sphere").commit();
-        this.currentlyShownImageFragment = sphereFragment;
-    }
-
+    /**
+     * Initialize the user interface.
+     */
     private void setupUI() {
         // Prepare UI
         toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -116,6 +104,10 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Handle an incoming intent. Distinguish between actions and pass the intent down to respective methods.
+     * @param intent incoming intent.
+     */
     private void handleIntent(Intent intent) {
         switch (intent.getAction()) {
             //Image was sent into the app
@@ -131,6 +123,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Check, if we are allowed to access external storage. If we are, then handle the intent.
+     * Otherwise cache the intent and prompt the user to grant us access.
+     * @param intent incoming intent.
+     */
     private void checkPermissionAndHandleSentImage(Intent intent) {
         int status = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
         if (status == PackageManager.PERMISSION_GRANTED) {
@@ -145,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case PERMISSION_REQUEST_READ_EXTERNAL_STORAGE: {
                 // If request is cancelled, the result arrays are empty.
@@ -157,40 +154,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-    }
-
-    private void displayUI(boolean display) {
-        if (display) {
-            fab.show();
-            toolbar.setVisibility(View.VISIBLE);
-        } else {
-            fab.setVisibility(View.INVISIBLE);
-            toolbar.setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        displayUI(true);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menu_about:
-                Toast.makeText(this, R.string.toast_not_yet_implemented, Toast.LENGTH_SHORT).show();
-                return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     /**
@@ -240,6 +203,59 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * Show/hide the FAB and toolbar.
+     * @param display show/hide
+     */
+    private void displayUI(boolean display) {
+        if (display) {
+            fab.show();
+            toolbar.setVisibility(View.VISIBLE);
+        } else {
+            fab.setVisibility(View.INVISIBLE);
+            toolbar.setVisibility(View.GONE);
+        }
+    }
+
+    private void showProgressFragment() {
+        fm.beginTransaction().replace(R.id.container_fragment, progressFragment, "prog").commit();
+        this.currentlyShownImageFragment = null;
+    }
+
+    private void showFlatImageFragment() {
+        fm.beginTransaction().replace(R.id.container_fragment, flatFragment, "flat").commit();
+        this.currentlyShownImageFragment = flatFragment;
+    }
+
+    private void showSphereFragment() {
+        fm.beginTransaction().replace(R.id.container_fragment, sphereFragment, "sphere").commit();
+        this.currentlyShownImageFragment = sphereFragment;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        displayUI(true);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_about:
+                Toast.makeText(this, R.string.toast_not_yet_implemented, Toast.LENGTH_SHORT).show();
+                return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    /**
      * Display a photo sphere.
      */
     public void displayPhotoSphere() {
@@ -255,6 +271,11 @@ public class MainActivity extends AppCompatActivity {
         currentlyShownImageFragment.updateBitmap(bitmap);
     }
 
+    /**
+     * Convenience method because android sux.
+     * Returns the height of the status bar in dp.
+     * @return height of status bar.
+     */
     private int getStatusBarHeight() {
         int result = 0;
         int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
@@ -270,15 +291,5 @@ public class MainActivity extends AppCompatActivity {
 
     public Bitmap getBitmap() {
         return bitmap;
-    }
-
-    private class HandleSentImageTask extends AsyncTask<Intent, Void, Void> {
-
-        @Override
-        protected Void doInBackground(Intent... params) {
-            handleSentImageIntent(params[0]);
-
-            return null;
-        }
     }
 }

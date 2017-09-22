@@ -14,14 +14,13 @@ import com.davemorrissey.labs.subscaleview.ImageSource;
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView;
 
 /**
- * Created by vanitas on 17.09.17.
+ * Fragment containing an ImageView which displays the unfolded image.
  */
 public class FlatFragment extends ImageFragment {
 
     private static final String TAG = "SphericalFFrag";
 
     private SubsamplingScaleImageView imageView;
-    private Bitmap bitmap;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
@@ -62,7 +61,6 @@ public class FlatFragment extends ImageFragment {
         if (imageView == null) {
             return;
         }
-        this.bitmap = bitmap;
         imageView.setImage(ImageSource.cachedBitmap(bitmap));
     }
 }

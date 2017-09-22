@@ -15,14 +15,13 @@ import android.widget.FrameLayout;
 import de.trac.spherical.rendering.PhotoSphereSurfaceView;
 
 /**
- * Created by vanitas on 17.09.17.
+ * Fragment containing a PhotoSphereSurfaceView which displays the image projected on a sphere.
  */
 public class SphereFragment extends ImageFragment implements View.OnTouchListener {
 
     private static final String TAG = "SphericalSFrag";
 
     private PhotoSphereSurfaceView surfaceView;
-    private Bitmap bitmap;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
@@ -74,7 +73,6 @@ public class SphereFragment extends ImageFragment implements View.OnTouchListene
         if (surfaceView == null) {
             return;
         }
-        this.bitmap = bitmap;
         surfaceView.setBitmap(bitmap);
     }
 }
