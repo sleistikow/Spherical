@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -165,41 +166,52 @@ public class MainActivity extends AppCompatActivity {
         if (intent == null) {
             throw new AssertionError("Intent is null!");
         }
-        String type = intent.getType();
-        if (type != null) {
 
-            Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-            if (imageUri == null) {
-                Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Log.d(TAG, "START LOADING BITMAP");
-            try {
-                bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
-                metadata = PhotoSphereParser.parse(getContentResolver().openInputStream(imageUri));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            Log.d(TAG, "FINISHED LOADING BITMAP");
-
-            switch (type) {
-                case MIME_PHOTO_SPHERE:
-                    displayPhotoSphere();
-                    break;
-
-                default:
-                    if (metadata != null) {
-                        displayPhotoSphere();
-                    } else {
-                        displayFlatImage();
-                    }
-                    break;
-            }
-
-        } else {
+        final String type = intent.getType();
+        if (type == null) {
             Toast.makeText(this, "TODO: Figure out what to do :D", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        final Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        if (imageUri == null) {
+            Toast.makeText(this, R.string.toast_file_not_found, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // process image asynchronous.
+        new AsyncTask<Uri, Void, Void>() {
+            @Override
+            protected Void doInBackground(Uri... params) {
+                Uri uri = params[0];
+
+                try {
+                    bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(uri));
+                    metadata = PhotoSphereParser.parse(getContentResolver().openInputStream(uri));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void result) {
+                switch (type) {
+                    case MIME_PHOTO_SPHERE:
+                        displayPhotoSphere();
+                        break;
+
+                    default:
+                        if (metadata != null) {
+                            displayPhotoSphere();
+                        } else {
+                            displayFlatImage();
+                        }
+                        break;
+                }
+            }
+        }.execute(imageUri);
     }
 
     /**
