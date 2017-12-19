@@ -85,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                PhotoSphereSurfaceView.USE_TOUCH = !PhotoSphereSurfaceView.USE_TOUCH;
+                sphereFragment.toggleUseTouchInput();
                 displayUI(false);
             }
         });

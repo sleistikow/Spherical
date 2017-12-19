@@ -75,4 +75,8 @@ public class SphereFragment extends ImageFragment implements View.OnTouchListene
         }
         surfaceView.setBitmap(bitmap);
     }
+
+    public void toggleUseTouchInput() {
+        surfaceView.setUseTouchInput(!surfaceView.getUseTouchInput());
+    }
 }

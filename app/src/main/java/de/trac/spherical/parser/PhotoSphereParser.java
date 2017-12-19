@@ -94,6 +94,11 @@ public class PhotoSphereParser {
         throwIfUnexpectedEOF(i, r.length);
         int exifLen = integer(r);
 
+        //Check for broken or unavailable header
+        if (exifLen <= 1) {
+            return null;
+        }
+
         //Skip EXIF header
         r = new byte[exifLen - 2];
         i = inputStream.read(r);
