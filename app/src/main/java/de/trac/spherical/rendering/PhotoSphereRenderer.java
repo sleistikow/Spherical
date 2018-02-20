@@ -65,7 +65,7 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
     private float modelMatrix[] = new float [16];
 
     // Store view matrix.
-    private float viewMatrix [] = new float [16];
+    // private float viewMatrix [] = new float [16];
 
     // Store the model view projection matrix.
     private float mvpMatrix [] = new float [32];
@@ -115,9 +115,9 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
             uploadImage();
 
         // Update transformation matrix.
-        //Matrix.multiplyMM(mvpMatrix, 0, surfaceView.getRotationMatrix(), 0, modelMatrix, 0);
-        //Matrix.multiplyMM(mvpMatrix, 16, viewMatrix, 0, mvpMatrix, 0);
-        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, surfaceView.getRotationMatrix(), 0);
+        Matrix.multiplyMM(mvpMatrix, 16, surfaceView.getRotationMatrix(), 0, modelMatrix, 0);
+        //Matrix.multiplyMM(mvpMatrix, 0, viewMatrix, 0, mvpMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvpMatrix, 16);
 
         // Draw the frame.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -181,8 +181,8 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         glGenTextures(1, textureID, 0);
 
         // Initialize matrices.
-        //Matrix.setRotateM(modelMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
-        Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
+        Matrix.setRotateM(modelMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
+        //Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
     }
 
     /**
