@@ -9,6 +9,7 @@ import android.hardware.SensorManager;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.os.Build;
+import android.util.Log;
 import android.view.MotionEvent;
 
 /**
@@ -64,7 +65,7 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
 
         if(!useTouchInput)
             return true;
-/*
+
         // Retrieve ray in world space.
         renderer.getRay(event.getX(), event.getY(), rayStart, rayDirection);
 
@@ -80,7 +81,8 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
 
         // Since the conditions are
         if(D < 0) {
-            throw new RuntimeException("Ray must intersect with sphere, check camera position");
+            D = -D;
+            //throw new RuntimeException("Ray must intersect with sphere, check camera position");
         }
 
         D = (float) Math.sqrt(D);
@@ -90,12 +92,11 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
         float px = rayStart[0] + t*rayDirection[0];
         float py = rayStart[1] + t*rayDirection[1];
         float pz = rayStart[2] + t*rayDirection[2];
-
-        synchronized (rotationMatrix) {
-            Matrix.translateM(rotationMatrix, 0, px, py, pz);
-        }
-*/
-        /*
+/*
+        renderer.points[0] = px;
+        renderer.points[1] = py;
+        renderer.points[2] = pz;
+  */
         // Calculate angles.
         float angleY = (float) Math.toDegrees(Math.atan2(pz, px));
         float angleXZ = (float) Math.toDegrees(Math.acos(py));
@@ -106,17 +107,22 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
                 oldAngleXZ = angleXZ;
                 System.arraycopy(getRotationMatrix(), 0, tempMatrix, 0, 16);
                 break;
-            case MotionEvent.ACTION_MOVE:
 
+            case MotionEvent.ACTION_MOVE:
                 synchronized (rotationMatrix) {
                     System.arraycopy(tempMatrix, 0, rotationMatrix, 0, 16);
-                    //Matrix.rotateM(rotationMatrix, 0, oldAngleY-angleY, 0.0f, 1.0f, 0.0f);
-                    Matrix.rotateM(rotationMatrix, 0, oldAngleXZ-angleXZ, 1.0f, 0.0f, 0.0f);
-                    //Matrix.setLookAtM(rotationMatrix, 0, 0.0f, 0.0f, 0.0f, px, py, pz, 1.0f, 0.0f, 0.0f);
+                    float[] s = new float[16];
+                    Matrix.setIdentityM(s, 0);
+                    Matrix.rotateM(s, 0, oldAngleY + angleY, 0, 1 ,0);
+                    Matrix.rotateM(s, 0, oldAngleXZ + angleXZ, 1, 0, 1);
+                    System.arraycopy(s, 0, rotationMatrix, 0, 16);
+                    //Matrix.rotateM(rotationMatrix, 0, (oldAngleY-angleY), px, 0.0f, pz);
+                    //Matrix.rotateM(rotationMatrix, 0, oldAngleXZ-angleXZ, 0.0f, 1.0f, 0.0f);
+                    //Matrix.setLookAtM(rotationMatrix, 0, 0.0f, 0.0f, 0.0f, , py, 0, 1.0f, 0.0f, 0.0f);
                 }
                 break;
         }
-        */
+
         return true;
     }
 
@@ -161,6 +167,11 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
      */
     public void setUseTouchInput(boolean useTouchInput) {
         this.useTouchInput = useTouchInput;
+        if(useTouchInput) {
+            synchronized (rotationMatrix) {
+                Matrix.setIdentityM(rotationMatrix, 0);
+            }
+        }
     }
 
     /**

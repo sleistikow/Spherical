@@ -57,6 +57,7 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
 
     // Store a photoSphereGeometry geometry as framework for the photo texture.
     private PhotoSphereGeometry photoSphereGeometry = null;
+    public float [] points = new float[4];
 
     // Store projection matrix.
     private float projectionMatrix[] = new float [16];
@@ -65,7 +66,9 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
     private float modelMatrix[] = new float [16];
 
     // Store view matrix.
-    // private float viewMatrix [] = new float [16];
+    private float viewMatrix [] = new float [16];
+
+    private float modelViewMatrix [] = new float[16];
 
     // Store the model view projection matrix.
     private float mvpMatrix [] = new float [32];
@@ -114,8 +117,15 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         if(requestedBitmap != null)
             uploadImage();
 
+        // DEBUG - BEGIN
+        Matrix.setRotateM(modelMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
+        System.arraycopy(surfaceView.getRotationMatrix(), 0, viewMatrix, 0, 16);
+        Matrix.multiplyMM(modelViewMatrix, 0, viewMatrix, 0, modelMatrix, 0);
+        Matrix.scaleM(modelViewMatrix, 0, -1, -1, -1);
+        // DEBUG - END
+
         // Update transformation matrix.
-        Matrix.multiplyMM(mvpMatrix, 16, surfaceView.getRotationMatrix(), 0, modelMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 16, viewMatrix, 0, modelMatrix, 0);
         //Matrix.multiplyMM(mvpMatrix, 0, viewMatrix, 0, mvpMatrix, 0);
         Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvpMatrix, 16);
 
@@ -134,6 +144,16 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         glBindTexture(GL_TEXTURE_2D, textureID[0]);
         glDrawElements(GL_TRIANGLES, photoSphereGeometry.getIndexBuffer().capacity(), GL_UNSIGNED_SHORT, photoSphereGeometry.getIndexBuffer());
         glBindTexture(GL_TEXTURE_2D, 0);
+
+        // DEBUG - BEGIN
+        //Matrix.multiplyMV(res, 0, viewMatrix, 0, points, 0);
+        Matrix.translateM(modelMatrix, 0, points[0], points[1], points[2]);
+        Matrix.scaleM(modelMatrix, 0, 0.1f, 0.1f, 0.1f);
+        Matrix.multiplyMM(mvpMatrix, 16, viewMatrix, 0, modelMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvpMatrix, 16);
+        glUniformMatrix4fv(mvpLocation, 1, false, mvpMatrix, 0);
+        glDrawElements(GL_TRIANGLES, photoSphereGeometry.getIndexBuffer().capacity(), GL_UNSIGNED_SHORT, photoSphereGeometry.getIndexBuffer());
+        // DEBUG - END
 
         glDisableVertexAttribArray(textureCoordinatesLocation);
         glDisableVertexAttribArray(positionLocation);
@@ -169,8 +189,8 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         // Set OpenGL state.
         glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
         glEnable(GL_DEPTH_TEST);
-        //glEnable(GL_CULL_FACE);
         glDisable(GL_CULL_FACE);
+        //glEnable(GL_CULL_FACE);
         //glFrontFace(GL_CW);
         glActiveTexture(GL_TEXTURE0);
 
@@ -181,6 +201,7 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         glGenTextures(1, textureID, 0);
 
         // Initialize matrices.
+        Matrix.setIdentityM(modelViewMatrix, 0);
         Matrix.setRotateM(modelMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
         //Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
     }
@@ -236,12 +257,13 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
      * @param outRayDirection will be filled by the direction of the ray
      */
     public void getRay(float x, float y, float [] outRayStart, float [] outRayDirection) {
-        GLU.gluUnProject(x, y, 0.0f, modelMatrix, 0, projectionMatrix, 0, view, 0, outRayStart, 0);
-        GLU.gluUnProject(x, y, 1.0f, modelMatrix, 0, projectionMatrix, 0, view, 0, outRayDirection, 0);
+        Matrix.setIdentityM(modelMatrix, 0); // HACK
+        GLU.gluUnProject(x, view[3] - y - 1, 0.0f, modelMatrix, 0, projectionMatrix, 0, view, 0, outRayStart, 0);
+        GLU.gluUnProject(x, view[3] - y - 1, 1.0f, modelMatrix, 0, projectionMatrix, 0, view, 0, outRayDirection, 0);
     }
 
     /**
-     * Builds a shader program given vertex and fragment shader soruce.
+     * Builds a shader program given vertex and fragment shader source.
      * @param vertexSource The vertex shader source
      * @param fragmentSource The fragment shader source
      * @return shader program
