@@ -2,14 +2,10 @@ package de.trac.spherical;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -33,32 +29,45 @@ import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import de.trac.spherical.parser.PhotoSphereMetadata;
+import butterknife.BindView;
+import butterknife.ButterKnife;
 import de.trac.spherical.parser.PhotoSphereParser;
+import de.trac.spherical.rendering.PhotoSphereSurfaceView;
+import de.trac.spherical.util.LoadImageTask;
 
-import static de.trac.spherical.BroadcastHelper.BroadcastType.PROGRESS_FINISHED;
-import static de.trac.spherical.BroadcastHelper.BroadcastType.PROGRESS_START;
 
-
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoadImageTask.FinishedCallback {
 
     public static final String TAG = "Spherical";
     public static final String MIME_PHOTO_SPHERE = "application/vnd.google.panorama360+jpg";
     private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 387;
 
     // UI
-    private FloatingActionButton actionButton;
-    private Toolbar toolbar;
+    @BindView(R.id.fab)
+    FloatingActionButton actionButton;
+
+    @BindView(R.id.toolbar)
+    Toolbar toolbar;
+
     private GestureDetectorCompat gestureDetector;
 
     // Cache
     private Intent cachedIntent;
-    private Bitmap bitmap;
-    private PhotoSphereMetadata metadata;
+    private LoadImageTask.Result image;
+
+    @Override
+    public void onImageLoadingFinished(LoadImageTask.Result result) {
+        this.image = result;
+        if (result.getMetadata() == null) {
+            showFragment(FragmentType.FLAT);
+        } else {
+            showFragment(FragmentType.SPHERE);
+        }
+        ((ImageFragment) currentFragment).updateBitmap(result.getBitmap());
+    }
 
     // Fragments
     private enum FragmentType {
@@ -76,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
 
     private FragmentManager fragmentManager;
     private Map<FragmentType, Fragment> fragments;
+    private Fragment currentFragment;
 
     // Broadcast handling.
     private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -83,19 +93,22 @@ public class MainActivity extends AppCompatActivity {
         public void onReceive(Context context, Intent intent) {
             switch (BroadcastHelper.getBroadcastType(intent)) {
                 case PROGRESS_START:
+                    fragmentManager.beginTransaction().add(R.id.container_fragment, fragments.get(FragmentType.PROGRESS)).commitAllowingStateLoss();
                     break;
                 case PROGRESS_FINISHED:
+                    fragmentManager.beginTransaction().remove(fragments.get(FragmentType.PROGRESS)).commitAllowingStateLoss();
                     break;
                 default:
                     break;
             }
         }
-    }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
         setupUI();
 
         // Init fragments.
@@ -122,25 +135,28 @@ public class MainActivity extends AppCompatActivity {
      */
     private void setupUI() {
         // Prepare UI
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
+
+        // Dirty hacks
         RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) toolbar.getLayoutParams();
         lp.topMargin += getStatusBarHeight();
         toolbar.bringToFront();
-        actionButton = (FloatingActionButton) findViewById(R.id.fab);
-        actionButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                sphereFragment.toggleUseTouchInput();
-                setUIVisibility(false);
-            }
-        });
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             Window w = getWindow();
             w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         }
+
+        actionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PhotoSphereSurfaceView photoSphereSurfaceView =
+                        ((SphereFragment)fragments.get(FragmentType.SPHERE)).getSurfaceView();
+                photoSphereSurfaceView.setUseTouchInput(!photoSphereSurfaceView.getUseTouchInput());
+                setUIVisibility(false);
+            }
+        });
+
         // Detect gestures like single taps.
         gestureDetector = new GestureDetectorCompat(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
@@ -157,7 +173,8 @@ public class MainActivity extends AppCompatActivity {
      * @param intent incoming intent.
      */
     private void handleIntent(Intent intent) {
-        switch (intent.getAction()) {
+        String action = intent.getAction() != null ? intent.getAction() : "";
+        switch (action) {
             //Image was sent into the app
             case Intent.ACTION_SEND:
                 showFragment(FragmentType.SPHERE);
@@ -227,7 +244,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // process image asynchronous.
-        new LoadImageTask(this, getContentResolver(), imageUri).execute();
+        BroadcastHelper.broadcast(this, BroadcastHelper.BroadcastType.PROGRESS_START);
+        new LoadImageTask(getContentResolver(), imageUri, type, this).execute();
     }
 
     /**
@@ -249,7 +267,8 @@ public class MainActivity extends AppCompatActivity {
      * @param type fragment to be shown
      */
     private void showFragment(FragmentType type) {
-        fragmentManager.beginTransaction().replace(R.id.container_fragment, fragments.get(type), type.tag).commit();
+        currentFragment = fragments.get(type);
+        fragmentManager.beginTransaction().replace(R.id.container_fragment, currentFragment, type.tag).commit();
     }
 
     @Override
@@ -271,25 +290,18 @@ public class MainActivity extends AppCompatActivity {
             case R.id.menu_about:
                 Toast.makeText(this, R.string.toast_not_yet_implemented, Toast.LENGTH_SHORT).show();
                 return true;
+            case R.id.menu_force_sphere:
+                showFragment(FragmentType.SPHERE);
+                ((ImageFragment) currentFragment).updateBitmap(image.getBitmap());
+                return true;
+
+            case R.id.menu_force_flat:
+                showFragment(FragmentType.FLAT);
+                ((ImageFragment) currentFragment).updateBitmap(image.getBitmap());
+                return true;
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    /**
-     * Display a photo sphere.
-     */
-    public void displayPhotoSphere() {
-        showFragment(FragmentType.SPHERE);
-        currentlyShownImageFragment.updateBitmap(bitmap);
-    }
-
-    /**
-     * Display a flat bitmap.
-     */
-    public void displayFlatImage() {
-        showFragment(FragmentType.FLAT);
-        currentlyShownImageFragment.updateBitmap(bitmap);
     }
 
     /**
@@ -310,59 +322,4 @@ public class MainActivity extends AppCompatActivity {
         return gestureDetector;
     }
 
-    /**
-     * Dedicated async tasks to load an image.
-     * Takes a progress reporter and informs it about the changes.
-     */
-    private static class LoadImageTask extends AsyncTask<Void, Void, Void> {
-
-        private ContentResolver contentResolver;
-        private Uri uri;
-
-        private Bitmap bitmap;
-        private PhotoSphereMetadata metadata;
-        private Context context;
-
-        LoadImageTask(Context context, ContentResolver contentResolver, Uri uri) {
-            this.context = context;
-            this.contentResolver = contentResolver;
-            this.uri = uri;
-        }
-
-        @Override
-        protected void onPreExecute() {
-            BroadcastHelper.broadcast(context, PROGRESS_START);
-        }
-
-        @Override
-        protected Void doInBackground(Void... params) {
-
-            try {
-                bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri));
-                metadata = PhotoSphereParser.parse(contentResolver.openInputStream(uri));
-            } catch (IOException | OutOfMemoryError e) {
-                e.printStackTrace();
-            }
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void result) {
-            BroadcastHelper.broadcast(context, PROGRESS_FINISHED);
-            switch (type) {
-                case MIME_PHOTO_SPHERE:
-                    showFragment(FragmentType.SPHERE);
-                    break;
-
-                default:
-                    if (metadata != null) {
-                        displayPhotoSphere();
-                    } else {
-                        displayFlatImage();
-                    }
-                    break;
-            }
-        }
-    }
 }

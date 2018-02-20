@@ -203,12 +203,12 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         // Tell the main activity we are going to do an expensive operation.
         BroadcastHelper.broadcast(surfaceView.getContext(), BroadcastHelper.BroadcastType.PROGRESS_START);
 
-        // Check if requestedBitmap needs to be downsampled.
+        // Check if requestedBitmap needs to be down-sampled.
         int [] maxTextureSize = new int[1];
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
         float maxSize = Math.max(requestedBitmap.getWidth(), requestedBitmap.getHeight());
         if(maxSize > maxTextureSize[0]) { // TODO: implement tiling technique
-            Log.w(TAG, "Image too big, exceeding " + maxTextureSize[0] + " : will be downsampled");
+            Log.w(TAG, "Image too big, exceeding " + maxTextureSize[0] + " : will be down-sampled");
             int newWidth = (int) (requestedBitmap.getWidth() * maxTextureSize[0] / maxSize);
             int newHeight = (int) (requestedBitmap.getHeight() * maxTextureSize[0] / maxSize);
             requestedBitmap = Bitmap.createScaledBitmap(requestedBitmap, newWidth, newHeight, true);

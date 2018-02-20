@@ -13,6 +13,9 @@ import android.view.ViewGroup;
 import com.davemorrissey.labs.subscaleview.ImageSource;
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
 /**
  * Fragment containing an ImageView which displays the unfolded image.
  */
@@ -20,20 +23,25 @@ public class FlatFragment extends ImageFragment {
 
     private static final String TAG = "SphericalFFrag";
 
-    private SubsamplingScaleImageView imageView;
+    @BindView(R.id.image_view)
+    SubsamplingScaleImageView imageView;
+
+    private Bitmap bitmap;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
-        Log.d(TAG, "onCreateView");
-        return inflater.inflate(R.layout.fragment_flat, parent, false);
+        View view = inflater.inflate(R.layout.fragment_flat, parent, false);
+        ButterKnife.bind(this, view);
+        return view;
     }
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         Log.d(TAG, "onViewCreated");
+        updateBitmap(bitmap);
+
+        BroadcastHelper.broadcast(getContext(), BroadcastHelper.BroadcastType.PROGRESS_FINISHED);
         setHasOptionsMenu(true);
-        imageView = (SubsamplingScaleImageView) view.findViewById(R.id.image_view);
-        updateBitmap(getMainActivity().getBitmap());
     }
 
     @Override
@@ -44,19 +52,14 @@ public class FlatFragment extends ImageFragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menu_force_sphere:
-                getMainActivity().displayPhotoSphere();
-                return true;
-        }
         return super.onOptionsItemSelected(item);
     }
 
     @Override
     public void updateBitmap(Bitmap bitmap) {
-        if (imageView == null) {
-            return;
+        this.bitmap = bitmap;
+        if (imageView != null && bitmap != null) {
+            imageView.setImage(ImageSource.cachedBitmap(bitmap));
         }
-        imageView.setImage(ImageSource.cachedBitmap(bitmap));
     }
 }

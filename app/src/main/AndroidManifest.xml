@@ -3,6 +3,7 @@
     package="de.trac.spherical">
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.SET_DEBUG_APP"/>
 
     <application
         android:allowBackup="false"
