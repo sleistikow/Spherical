@@ -11,57 +11,13 @@ import android.util.Log;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-import static android.opengl.GLES20.GL_COLOR_BUFFER_BIT;
-import static android.opengl.GLES20.GL_COMPILE_STATUS;
-import static android.opengl.GLES20.GL_CULL_FACE;
-import static android.opengl.GLES20.GL_CW;
-import static android.opengl.GLES20.GL_DEPTH_BUFFER_BIT;
-import static android.opengl.GLES20.GL_DEPTH_TEST;
-import static android.opengl.GLES20.GL_FLOAT;
-import static android.opengl.GLES20.GL_FRAGMENT_SHADER;
-import static android.opengl.GLES20.GL_LINEAR;
-import static android.opengl.GLES20.GL_LINK_STATUS;
-import static android.opengl.GLES20.GL_NEAREST;
-import static android.opengl.GLES20.GL_TEXTURE0;
-import static android.opengl.GLES20.GL_TEXTURE_2D;
-import static android.opengl.GLES20.GL_TEXTURE_MAG_FILTER;
-import static android.opengl.GLES20.GL_TEXTURE_MIN_FILTER;
-import static android.opengl.GLES20.GL_TRIANGLES;
-import static android.opengl.GLES20.GL_TRUE;
-import static android.opengl.GLES20.GL_UNSIGNED_SHORT;
-import static android.opengl.GLES20.GL_VERTEX_SHADER;
-import static android.opengl.GLES20.glActiveTexture;
-import static android.opengl.GLES20.glAttachShader;
-import static android.opengl.GLES20.glBindTexture;
-import static android.opengl.GLES20.glClear;
-import static android.opengl.GLES20.glClearColor;
-import static android.opengl.GLES20.glCompileShader;
-import static android.opengl.GLES20.glCreateProgram;
-import static android.opengl.GLES20.glCreateShader;
-import static android.opengl.GLES20.glDeleteProgram;
-import static android.opengl.GLES20.glDeleteShader;
-import static android.opengl.GLES20.glDisableVertexAttribArray;
-import static android.opengl.GLES20.glDrawElements;
-import static android.opengl.GLES20.glEnable;
-import static android.opengl.GLES20.glEnableVertexAttribArray;
-import static android.opengl.GLES20.glFrontFace;
-import static android.opengl.GLES20.glGenTextures;
-import static android.opengl.GLES20.glGetAttribLocation;
-import static android.opengl.GLES20.glGetProgramInfoLog;
-import static android.opengl.GLES20.glGetProgramiv;
-import static android.opengl.GLES20.glGetShaderInfoLog;
-import static android.opengl.GLES20.glGetShaderiv;
-import static android.opengl.GLES20.glGetUniformLocation;
-import static android.opengl.GLES20.glLinkProgram;
-import static android.opengl.GLES20.glShaderSource;
-import static android.opengl.GLES20.glTexParameteri;
-import static android.opengl.GLES20.glUniform1i;
-import static android.opengl.GLES20.glUniformMatrix4fv;
-import static android.opengl.GLES20.glUseProgram;
-import static android.opengl.GLES20.glVertexAttribPointer;
-import static android.opengl.GLES20.glViewport;
+import de.trac.spherical.BroadcastHelper;
+
+import static android.opengl.GLES20.*;
 
 public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
+
+    private static final String TAG = "PhotoSphereRenderer";
 
     /**
      * Default vertex shader.
@@ -97,7 +53,7 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
     // Sphere configuration.
     public static final int SPHERE_POLY_COUNT_X = 32;
     public static final int SPHERE_POLY_COUNT_Y = 32;
-    public static final float SPHERE_RADIUS = 10.0f;
+    public static final float SPHERE_RADIUS = 1.0f;
 
     // Store a photoSphereGeometry geometry as framework for the photo texture.
     private PhotoSphereGeometry photoSphereGeometry = null;
@@ -105,14 +61,14 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
     // Store projection matrix.
     private float projectionMatrix[] = new float [16];
 
-    // Store modelview matrix.
+    // Store model matrix.
     private float modelMatrix[] = new float [16];
 
     // Store view matrix.
     private float viewMatrix [] = new float [16];
 
     // Store the model view projection matrix.
-    private float mvpMatrix [] = new float [16];
+    private float mvpMatrix [] = new float [32];
 
     // This array contains the current view matrix {x, y, width, height).
     private int view [] = null;
@@ -129,8 +85,8 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
     // Store texture.
     private final int textureID [] = new int[1];
 
-    // Store bitmap for lazy loading.
-    private Bitmap bitmap = null;
+    // Store requested bitmap for lazy loading.
+    private Bitmap requestedBitmap = null;
 
     // Store input handler instance to determine transformation.
     private PhotoSphereSurfaceView surfaceView;
@@ -155,20 +111,13 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
     public void onDrawFrame(GL10 unused) {
 
         // Upload texture, if necessary.
-        if(bitmap != null) {
-            glBindTexture(GL_TEXTURE_2D, textureID[0]);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            GLUtils.texImage2D(GL_TEXTURE_2D, 0, bitmap, 0);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            // Release bitmap for garbage collection.
-            bitmap = null;
-        }
+        if(requestedBitmap != null)
+            uploadImage();
 
         // Update transformation matrix.
-        Matrix.multiplyMM(mvpMatrix, 0, surfaceView.getRotationMatrix(), 0, modelMatrix, 0);
-        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, mvpMatrix, 0);
+        //Matrix.multiplyMM(mvpMatrix, 0, surfaceView.getRotationMatrix(), 0, modelMatrix, 0);
+        //Matrix.multiplyMM(mvpMatrix, 16, viewMatrix, 0, mvpMatrix, 0);
+        Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, surfaceView.getRotationMatrix(), 0);
 
         // Draw the frame.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -218,10 +167,11 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         photoSphereGeometry = new PhotoSphereGeometry(SPHERE_RADIUS, SPHERE_POLY_COUNT_X, SPHERE_POLY_COUNT_Y);
 
         // Set OpenGL state.
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
         glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-        glFrontFace(GL_CW);
+        //glEnable(GL_CULL_FACE);
+        glDisable(GL_CULL_FACE);
+        //glFrontFace(GL_CW);
         glActiveTexture(GL_TEXTURE0);
 
         // Build shader program.
@@ -231,17 +181,51 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
         glGenTextures(1, textureID, 0);
 
         // Initialize matrices.
-        Matrix.setRotateM(modelMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
+        //Matrix.setRotateM(modelMatrix, 0, 90, 1.0f, 0.0f, 0.0f);
         Matrix.setLookAtM(viewMatrix, 0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f);
     }
 
     /**
-     * Requests the renderer to uploads the image data of the given bitmap as texture.
+     * Requests the renderer to uploads the image data of the given requestedBitmap as texture.
      * May not be done immediately.
      * @param bitmap Bitmap to be set as texture
      */
     public void requestBitmapUpload(Bitmap bitmap) {
-        this.bitmap = bitmap;
+        this.requestedBitmap = bitmap;
+        surfaceView.requestRender();
+    }
+
+    /**
+     * Uploads a requested image.
+     */
+    private void uploadImage() {
+
+        // Tell the main activity we are going to do an expensive operation.
+        BroadcastHelper.broadcast(surfaceView.getContext(), BroadcastHelper.BroadcastType.PROGRESS_START);
+
+        // Check if requestedBitmap needs to be downsampled.
+        int [] maxTextureSize = new int[1];
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, maxTextureSize, 0);
+        float maxSize = Math.max(requestedBitmap.getWidth(), requestedBitmap.getHeight());
+        if(maxSize > maxTextureSize[0]) { // TODO: implement tiling technique
+            Log.w(TAG, "Image too big, exceeding " + maxTextureSize[0] + " : will be downsampled");
+            int newWidth = (int) (requestedBitmap.getWidth() * maxTextureSize[0] / maxSize);
+            int newHeight = (int) (requestedBitmap.getHeight() * maxTextureSize[0] / maxSize);
+            requestedBitmap = Bitmap.createScaledBitmap(requestedBitmap, newWidth, newHeight, true);
+        }
+
+        // Upload texture.
+        glBindTexture(GL_TEXTURE_2D, textureID[0]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        GLUtils.texImage2D(GL_TEXTURE_2D, 0, requestedBitmap, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        // Release requestedBitmap for garbage collection.
+        requestedBitmap = null;
+
+        // Tell main activity we are done.
+        BroadcastHelper.broadcast(surfaceView.getContext(), BroadcastHelper.BroadcastType.PROGRESS_FINISHED);
     }
 
     /**
@@ -282,8 +266,8 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
             int[] linkStatus = new int[1];
             glGetProgramiv(program, GL_LINK_STATUS, linkStatus, 0);
             if (linkStatus[0] != GL_TRUE) {
-                Log.e("Shader", "Could not link program: ");
-                Log.e("Shader", glGetProgramInfoLog(program));
+                Log.e(TAG, "Could not link program: ");
+                Log.e(TAG, glGetProgramInfoLog(program));
                 glDeleteProgram(program);
                 throw new RuntimeException("Could not link program");
             }
@@ -323,8 +307,8 @@ public class PhotoSphereRenderer implements GLSurfaceView.Renderer {
             int[] compiled = new int[1];
             glGetShaderiv(shader, GL_COMPILE_STATUS, compiled, 0);
             if (compiled[0] == 0) {
-                Log.e("Shader", "Could not compile shader " + type + ":");
-                Log.e("Shader", glGetShaderInfoLog(shader));
+                Log.e(TAG, "Could not compile shader " + type + ":");
+                Log.e(TAG, glGetShaderInfoLog(shader));
                 glDeleteShader(shader);
                 shader = 0;
             }

@@ -1,6 +1,9 @@
 package de.trac.spherical;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -12,12 +15,13 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -30,10 +34,14 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import de.trac.spherical.parser.PhotoSphereMetadata;
 import de.trac.spherical.parser.PhotoSphereParser;
-import de.trac.spherical.rendering.PhotoSphereSurfaceView;
+
+import static de.trac.spherical.BroadcastHelper.BroadcastType.PROGRESS_FINISHED;
+import static de.trac.spherical.BroadcastHelper.BroadcastType.PROGRESS_START;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -42,22 +50,47 @@ public class MainActivity extends AppCompatActivity {
     public static final String MIME_PHOTO_SPHERE = "application/vnd.google.panorama360+jpg";
     private static final int PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 387;
 
-    private FragmentManager fm;
-
-    //UI
-    private FloatingActionButton fab;
+    // UI
+    private FloatingActionButton actionButton;
     private Toolbar toolbar;
     private GestureDetectorCompat gestureDetector;
 
-    private ProgressFragment progressFragment = new ProgressFragment();
-    private FlatFragment flatFragment = new FlatFragment();
-    private SphereFragment sphereFragment = new SphereFragment();
-    private ImageFragment currentlyShownImageFragment;
-
-    //Cache
+    // Cache
     private Intent cachedIntent;
     private Bitmap bitmap;
     private PhotoSphereMetadata metadata;
+
+    // Fragments
+    private enum FragmentType {
+        PROGRESS("progress"),
+        SPHERE("sphere"),
+        FLAT("flat");
+
+        /// Optional tag.
+        String tag;
+
+        FragmentType(String tag) {
+            this.tag = tag;
+        }
+    }
+
+    private FragmentManager fragmentManager;
+    private Map<FragmentType, Fragment> fragments;
+
+    // Broadcast handling.
+    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            switch (BroadcastHelper.getBroadcastType(intent)) {
+                case PROGRESS_START:
+                    break;
+                case PROGRESS_FINISHED:
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,9 +98,23 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setupUI();
 
-        fm = getSupportFragmentManager();
+        // Init fragments.
+        fragmentManager = getSupportFragmentManager();
 
+        fragments = new HashMap<>();
+        fragments.put(FragmentType.PROGRESS, new ProgressFragment());
+        fragments.put(FragmentType.SPHERE, new SphereFragment());
+        fragments.put(FragmentType.FLAT, new FlatFragment());
+
+        // Intent handling.
+        LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, BroadcastHelper.INTENT_FILTER);
         handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onDestroy() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
+        super.onDestroy();
     }
 
     /**
@@ -81,12 +128,12 @@ public class MainActivity extends AppCompatActivity {
         RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) toolbar.getLayoutParams();
         lp.topMargin += getStatusBarHeight();
         toolbar.bringToFront();
-        fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
+        actionButton = (FloatingActionButton) findViewById(R.id.fab);
+        actionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 sphereFragment.toggleUseTouchInput();
-                displayUI(false);
+                setUIVisibility(false);
             }
         });
 
@@ -98,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
         gestureDetector = new GestureDetectorCompat(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent event) {
-                displayUI(!fab.isShown());
+                setUIVisibility(!actionButton.isShown());
                 return true;
             }
 
@@ -113,7 +160,7 @@ public class MainActivity extends AppCompatActivity {
         switch (intent.getAction()) {
             //Image was sent into the app
             case Intent.ACTION_SEND:
-                showProgressFragment();
+                showFragment(FragmentType.SPHERE);
                 checkPermissionAndHandleSentImage(intent);
                 break;
 
@@ -180,73 +227,35 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // process image asynchronous.
-        new AsyncTask<Uri, Void, Void>() {
-            @Override
-            protected Void doInBackground(Uri... params) {
-                Uri uri = params[0];
-
-                try {
-                    bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(uri));
-                    metadata = PhotoSphereParser.parse(getContentResolver().openInputStream(uri));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void result) {
-                switch (type) {
-                    case MIME_PHOTO_SPHERE:
-                        displayPhotoSphere();
-                        break;
-
-                    default:
-                        if (metadata != null) {
-                            displayPhotoSphere();
-                        } else {
-                            displayFlatImage();
-                        }
-                        break;
-                }
-            }
-        }.execute(imageUri);
+        new LoadImageTask(this, getContentResolver(), imageUri).execute();
     }
 
     /**
      * Show/hide the FAB and toolbar.
-     * @param display show/hide
+     * @param visible show/hide
      */
-    private void displayUI(boolean display) {
-        if (display) {
-            fab.show();
+    private void setUIVisibility(boolean visible) {
+        if (visible) {
+            actionButton.show();
             toolbar.setVisibility(View.VISIBLE);
         } else {
-            fab.setVisibility(View.INVISIBLE);
+            actionButton.setVisibility(View.INVISIBLE);
             toolbar.setVisibility(View.GONE);
         }
     }
 
-    private void showProgressFragment() {
-        fm.beginTransaction().replace(R.id.container_fragment, progressFragment, "prog").commit();
-        this.currentlyShownImageFragment = null;
-    }
-
-    private void showFlatImageFragment() {
-        fm.beginTransaction().replace(R.id.container_fragment, flatFragment, "flat").commit();
-        this.currentlyShownImageFragment = flatFragment;
-    }
-
-    private void showSphereFragment() {
-        fm.beginTransaction().replace(R.id.container_fragment, sphereFragment, "sphere").commit();
-        this.currentlyShownImageFragment = sphereFragment;
+    /**
+     * Will show the fragment of the given type.
+     * @param type fragment to be shown
+     */
+    private void showFragment(FragmentType type) {
+        fragmentManager.beginTransaction().replace(R.id.container_fragment, fragments.get(type), type.tag).commit();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        displayUI(true);
+        setUIVisibility(true);
     }
 
     @Override
@@ -271,7 +280,7 @@ public class MainActivity extends AppCompatActivity {
      * Display a photo sphere.
      */
     public void displayPhotoSphere() {
-        showSphereFragment();
+        showFragment(FragmentType.SPHERE);
         currentlyShownImageFragment.updateBitmap(bitmap);
     }
 
@@ -279,7 +288,7 @@ public class MainActivity extends AppCompatActivity {
      * Display a flat bitmap.
      */
     public void displayFlatImage() {
-        showFlatImageFragment();
+        showFragment(FragmentType.FLAT);
         currentlyShownImageFragment.updateBitmap(bitmap);
     }
 
@@ -301,7 +310,59 @@ public class MainActivity extends AppCompatActivity {
         return gestureDetector;
     }
 
-    public Bitmap getBitmap() {
-        return bitmap;
+    /**
+     * Dedicated async tasks to load an image.
+     * Takes a progress reporter and informs it about the changes.
+     */
+    private static class LoadImageTask extends AsyncTask<Void, Void, Void> {
+
+        private ContentResolver contentResolver;
+        private Uri uri;
+
+        private Bitmap bitmap;
+        private PhotoSphereMetadata metadata;
+        private Context context;
+
+        LoadImageTask(Context context, ContentResolver contentResolver, Uri uri) {
+            this.context = context;
+            this.contentResolver = contentResolver;
+            this.uri = uri;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            BroadcastHelper.broadcast(context, PROGRESS_START);
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+
+            try {
+                bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri));
+                metadata = PhotoSphereParser.parse(contentResolver.openInputStream(uri));
+            } catch (IOException | OutOfMemoryError e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result) {
+            BroadcastHelper.broadcast(context, PROGRESS_FINISHED);
+            switch (type) {
+                case MIME_PHOTO_SPHERE:
+                    showFragment(FragmentType.SPHERE);
+                    break;
+
+                default:
+                    if (metadata != null) {
+                        displayPhotoSphere();
+                    } else {
+                        displayFlatImage();
+                    }
+                    break;
+            }
+        }
     }
 }

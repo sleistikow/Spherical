@@ -30,7 +30,7 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
     private final float rayDirection [] = new float[4];
 
     //
-    float oldAngleXZ, oldAngleY;
+    private float oldAngleXZ, oldAngleY;
 
     // The renderer used by this view.
     private PhotoSphereRenderer renderer;
@@ -64,7 +64,7 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
 
         if(!useTouchInput)
             return true;
-
+/*
         // Retrieve ray in world space.
         renderer.getRay(event.getX(), event.getY(), rayStart, rayDirection);
 
@@ -94,7 +94,7 @@ public class PhotoSphereSurfaceView extends GLSurfaceView implements SensorEvent
         synchronized (rotationMatrix) {
             Matrix.translateM(rotationMatrix, 0, px, py, pz);
         }
-
+*/
         /*
         // Calculate angles.
         float angleY = (float) Math.toDegrees(Math.atan2(pz, px));

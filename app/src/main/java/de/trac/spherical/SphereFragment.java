@@ -64,10 +64,6 @@ public class SphereFragment extends ImageFragment implements View.OnTouchListene
         return super.onOptionsItemSelected(item);
     }
 
-    private MainActivity getMainActivity() {
-        return (MainActivity) getActivity();
-    }
-
     @Override
     public void updateBitmap(Bitmap bitmap) {
         if (surfaceView == null) {
@@ -76,7 +72,7 @@ public class SphereFragment extends ImageFragment implements View.OnTouchListene
         surfaceView.setBitmap(bitmap);
     }
 
-    public void toggleUseTouchInput() {
-        surfaceView.setUseTouchInput(!surfaceView.getUseTouchInput());
+    public PhotoSphereSurfaceView getSurfaceView() {
+        return surfaceView;
     }
 }

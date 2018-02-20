@@ -52,10 +52,6 @@ public class FlatFragment extends ImageFragment {
         return super.onOptionsItemSelected(item);
     }
 
-    private MainActivity getMainActivity() {
-        return (MainActivity) getActivity();
-    }
-
     @Override
     public void updateBitmap(Bitmap bitmap) {
         if (imageView == null) {
